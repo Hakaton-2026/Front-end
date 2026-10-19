@@ -1,0 +1,244 @@
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+
+const tema = ref('escuro')
+
+function alternarTema() {
+    const novoTema = tema.value === 'escuro' ? 'claro' : 'escuro'
+  tema.value = novoTema
+  document.documentElement.setAttribute(
+    'data-theme',
+    novoTema
+  )
+
+  localStorage.setItem('tema', novoTema)
+}
+
+onMounted(() => {
+  const temaSalvo = localStorage.getItem('tema')
+
+  if (temaSalvo === 'claro' || temaSalvo === 'escuro') {
+    tema.value = temaSalvo
+  }
+
+  document.documentElement.setAttribute(
+    'data-theme',
+    tema.value
+  )
+})
+</script>
+
+<template>
+  <section class="perfil">
+        <div class="usuario-area">
+      <div class="foto">
+        <img
+          v-if="authStore.user?.profile_photo"
+          :src="authStore.user.profile_photo"
+          alt="Foto de perfil"
+        />
+
+        <ion-icon
+          v-else
+          name="person-outline"
+        ></ion-icon>
+      </div>
+
+      <div class="dados-usuario">
+        <h2>{{ authStore.user?.name || authStore.user?.nome || 'Seu nome' }}</h2>
+
+        <p>
+          {{ authStore.user?.email || 'Seu e-mail aparecerá aqui' }}
+        </p>
+      </div>
+    </div>
+
+<!-- Aparência -->
+<div class="aparencia">
+  <h2>Aparência</h2>
+
+  <button
+    type="button"
+    class="alternar-tema"
+    @click="alternarTema"
+    :aria-label="tema === 'escuro'
+      ? 'Ativar tema claro'
+      : 'Ativar tema escuro'"
+    :aria-pressed="tema === 'escuro'"
+  >
+    <ion-icon
+      :name="tema === 'escuro' ? 'moon-outline' : 'sunny-outline'"
+    ></ion-icon>
+
+    <span>
+      {{ tema === 'escuro' ? 'Tema escuro' : 'Tema claro' }}
+    </span>
+
+    <span class="interruptor" :class="{ ativo: tema === 'escuro' }">
+      <span class="interruptor-circulo"></span>
+    </span>
+  </button>
+</div>
+
+  </section>
+</template>
+
+<style scoped>
+.perfil {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  color: var(--cor-texto);
+}
+
+.perfil h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.usuario-area {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: var(--raio);
+}
+
+.foto {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--cor-borda);
+}
+
+.foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.foto ion-icon {
+  font-size: 2.8rem;
+  color: var(--cor-texto-secundario, #888);
+}
+
+.dados-usuario {
+  min-width: 0;
+}
+
+.dados-usuario h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.dados-usuario p {
+  margin: 0.4rem 0 0;
+  color: var(--cor-texto-secundario, #888);
+  overflow-wrap: anywhere;
+}
+
+.aparencia {
+  margin-top: 2rem;
+}
+
+.aparencia h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.alternar-tema {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  font: inherit;
+  text-align: left;
+  color: var(--cor-texto);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.alternar-tema > ion-icon {
+  font-size: 1.7rem;
+  color: var(--cor-texto);
+}
+
+.alternar-tema > span:nth-child(2) {
+  flex: 1;
+}
+
+.interruptor {
+  width: 46px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 20px;
+  background: #b8b8b8;
+  transition: background 0.2s;
+}
+
+.interruptor.ativo {
+  background: #ff5700;
+}
+
+.interruptor-circulo {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s;
+}
+
+.interruptor.ativo .interruptor-circulo {
+  transform: translateX(20px);
+}
+
+.alternar-tema:hover {
+  border-color: #ff5700;
+}
+
+.alternar-tema:focus-visible {
+  outline: 2px solid #ff5700;
+  outline-offset: 3px;
+}
+
+
+@media (max-width: 480px) {
+  .perfil {
+    padding: 1rem;
+  }
+
+  .usuario-area {
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .foto {
+    width: 76px;
+    height: 76px;
+  }
+
+  .opcoes-tema {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

@@ -6,3 +6,8 @@
     </p>
   </section>
 </template>
+<style scoped>
+.texto-suave, h1{
+  margin-left: 20px;
+}
+</style>

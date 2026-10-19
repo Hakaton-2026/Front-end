@@ -7,6 +7,7 @@ const menuAberto = ref(false)
 // Para adicionar uma página no menu, basta incluir um item aqui
 const links = [
   { to: '/', texto: 'Início' },
+   { to: '/perfil', texto: 'Perfil' },
   { to: '/sobre', texto: 'Sobre' },
 ]
 </script>
@@ -23,8 +24,8 @@ const links = [
         :aria-expanded="menuAberto"
         @click="menuAberto = !menuAberto"
       >
-        ☰
-      </button>
+<ion-icon name="menu-outline"></ion-icon>      
+</button>
 
       <nav :class="['links', { aberto: menuAberto }]" @click="menuAberto = false">
         <RouterLink v-for="item in links" :key="item.to" :to="item.to">
@@ -52,6 +53,7 @@ const links = [
 }
 
 .marca {
+ margin-left: 20px;
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--cor-primaria);

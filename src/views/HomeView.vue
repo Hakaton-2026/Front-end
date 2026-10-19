@@ -12,6 +12,7 @@ import { NOME_SITE } from '@/config'
 <style scoped>
 .inicio {
   padding: 4rem 0;
+  margin-left:20px ;
 }
 
 .inicio h1 {

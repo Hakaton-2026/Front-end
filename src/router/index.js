@@ -27,6 +27,19 @@ const router = createRouter({
       meta: { titulo: 'Sobre' },
     },
     {
+  path: '/perfil',
+  name: 'perfil',
+  component: () => import('@/views/PerfilView.vue'),
+  meta: { titulo: 'Meu perfil' },
+    },
+    
+    {
+  path: '/login',
+  name: 'login',
+  component: () => import('@/views/LoginView.vue'),
+  meta: { titulo: 'Login' },
+    },
+    {
       // Endereço que não existe volta para o início (precisa ser a última rota)
       path: '/:pathMatch(.*)*',
       redirect: '/',
