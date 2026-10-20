@@ -136,12 +136,6 @@ button,
     border-color 0.2s ease,
     transform 0.2s ease;
 }
-
-button:hover,
-.botao:hover {
-  border-color: var(--cor-primaria);
-}
-
 .botao-principal {
   background: var(--cor-primaria);
   border-color: var(--cor-primaria);
@@ -169,7 +163,7 @@ select {
   transition: border-color 0.2s ease;
 }
 
-input::placeholder,
+input::plceholder,
 textarea::placeholder {
   color: var(--cor-texto-suave);
 }
@@ -204,13 +198,6 @@ td {
   text-align: left;
 }
 
-/* =========================
-   ACESSIBILIDADE
-========================= */
-:focus-visible {
-  outline: 2px solid var(--cor-primaria);
-  outline-offset: 3px;
-}
 
 /* =========================
    RESPONSIVIDADE
