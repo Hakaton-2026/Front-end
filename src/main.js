@@ -1,5 +1,4 @@
-import './assets/styles.css'
-
+import '@/assets/styles.css'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { temaPlugin } from './plugin/tema.js'

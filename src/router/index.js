@@ -13,8 +13,8 @@ import { useAuthStore } from '@/stores/auth'
 
   rotasSoParaVisitantes  só para quem NÃO está logado (quem já entrou é mandado para o início).
 */
-const rotasPublicas = ['sobre', 'login', 'cadastro']
-const rotasSemLayout = ['login', 'cadastro']
+const rotasPublicas = ['sobre', 'login', 'cadastro', 'verificar']
+const rotasSemLayout = ['login', 'cadastro', 'verificar']
 const rotasSoParaVisitantes = ['login', 'cadastro']
 
 /*
@@ -59,6 +59,12 @@ const router = createRouter({
       name: 'cadastro',
       component: () => import('@/views/CadastroView.vue'),
       meta: { titulo: 'Cadastro' },
+    },
+    {
+      path: '/verificar',
+      name: 'verificar',
+      component: () => import('@/views/verificarEmailView.vue'),
+      meta: { titulo: 'Verificar' },
     },
     {
       // Endereço que não existe volta para o início (precisa ser a última rota)
