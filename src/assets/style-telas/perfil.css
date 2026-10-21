@@ -1,8 +1,8 @@
-
 .perfil {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
+  margin-top: -5rem;
   padding: 1.5rem;
   color: var(--cor-texto);
 }
@@ -20,8 +20,8 @@
   margin-top: 2rem;
   padding: 1.5rem;
   border-radius: var(--raio);
+  background: var(--cor-superficie-variante, rgba(0, 0, 0, 0.02)); 
 }
-
 .foto {
   width: 96px;
   height: 96px;
@@ -46,19 +46,22 @@
 }
 
 .dados-usuario {
-  min-width: 0;
+  min-width: 0; /* Evita que o flexbox quebre com textos longos */
+  flex: 1;
 }
 
 .dados-usuario h2 {
   margin: 0;
   font-size: 1.2rem;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dados-usuario p {
   margin: 0.4rem 0 0;
   color: var(--cor-texto-secundario, #888);
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .aparencia {
@@ -85,6 +88,7 @@
   border-radius: var(--raio);
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
+  -webkit-tap-highlight-color: transparent; /* Remove o flash azul ao clicar no mobile */
 }
 
 .alternar-tema > ion-icon {
@@ -105,6 +109,7 @@
   border-radius: 20px;
   background: #b8b8b8;
   transition: background 0.2s;
+  flex-shrink: 0; /* Impede o switch de amassar em telas estreitas */
 }
 
 .interruptor.ativo {
@@ -123,8 +128,14 @@
   transform: translateX(20px);
 }
 
+/* Feedback visual para Hover e Active (Desktop e Mobile) */
 .alternar-tema:hover {
   border-color: #ff5700;
+  background: var(--cor-superficie-hover, rgba(0, 0, 0, 0.01));
+}
+
+.alternar-tema:active {
+  background: var(--cor-superficie-active, rgba(0, 0, 0, 0.03));
 }
 
 .alternar-tema:focus-visible {
@@ -132,23 +143,26 @@
   outline-offset: 3px;
 }
 
-
+/* Telas Mobile e Dispositivos Pequenos */
 @media (max-width: 480px) {
   .perfil {
     padding: 1rem;
   }
 
   .usuario-area {
+    flex-direction: column; /* Empilha a foto e o texto verticalmente */
+    text-align: center;     /* Centraliza as informações do usuário */
     gap: 1rem;
-    padding: 1rem;
+    padding: 1.25rem;
   }
 
   .foto {
-    width: 76px;
-    height: 76px;
+    width: 84px; /* Tamanho ligeiramente maior para o design empilhado */
+    height: 84px;
   }
 
-  .opcoes-tema {
-    grid-template-columns: 1fr;
+  /* Ajuste para o switch não quebrar o alinhamento de texto em telas minúsculas */
+  .alternar-tema {
+    padding: 0.85rem;
   }
 }

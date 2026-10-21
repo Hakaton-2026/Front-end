@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth'
 
   rotasSoParaVisitantes  só para quem NÃO está logado (quem já entrou é mandado para o início).
 */
-const rotasPublicas = ['sobre', 'login', 'cadastro', 'verificar']
+const rotasPublicas = ['sobre', 'login', 'cadastro', 'verificar','home','perfil']
 const rotasSemLayout = ['login', 'cadastro', 'verificar']
 const rotasSoParaVisitantes = ['login', 'cadastro']
 

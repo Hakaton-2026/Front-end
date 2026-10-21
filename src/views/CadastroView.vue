@@ -1,6 +1,5 @@
-
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue' // 1. IMPORTAR O 'computed'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import '@/assets/style-telas/cadastro.css'
@@ -17,6 +16,16 @@ const form = reactive({
 const erro = ref('')
 const sucesso = ref('')
 const enviando = ref(false)
+
+// 2. CRIAR A VALIDAÇÃO: Verifica se algum campo está vazio
+const formularioValido = computed(() => {
+  return (
+    form.nome.trim() !== '' &&
+    form.email.trim() !== '' &&
+    form.senha.trim() !== '' &&
+    form.confirmarSenha.trim() !== ''
+  )
+})
 
 async function cadastrar() {
   erro.value = ''
@@ -57,70 +66,35 @@ async function cadastrar() {
     <div class="cartao">
       <h1>Criar conta</h1>
 
-      
       <form class="formulario" @submit.prevent="cadastrar">
         <label>
           Nome
-          <input
-            v-model="form.nome"
-            class="input"
-            type="text"
-            placeholder="Seu nome"
-            autocomplete="name"
-            required
-          />
+          <input v-model="form.nome" class="input" type="text" placeholder="Seu nome" autocomplete="name" required />
         </label>
 
         <label>
           E-mail
-          <input
-            v-model="form.email"
-            class="input"
-            type="email"
-            placeholder="seu@email.com"
-            autocomplete="email"
-            required
-          />
+          <input v-model="form.email" class="input" type="email" placeholder="seu@email.com" autocomplete="email" required />
         </label>
 
         <label>
           Senha
-          <input
-            v-model="form.senha"
-            class="input"
-            type="password"
-            placeholder="Crie uma senha"
-            autocomplete="new-password"
-            minlength="8"
-            required
-          />
+          <input v-model="form.senha" class="input" type="password" placeholder="Crie uma senha" autocomplete="new-password" minlength="8" required />
         </label>
 
         <label>
           Confirmar senha
-          <input
-            v-model="form.confirmarSenha"
-            class="input"
-            type="password"
-            placeholder="Digite a senha novamente"
-            autocomplete="new-password"
-            minlength="8"
-            required
-          />
+          <input v-model="form.confirmarSenha" class="input" type="password" placeholder="Digite a senha novamente" autocomplete="new-password" minlength="8" required />
         </label>
 
-        <p v-if="erro" class="erro">
-          {{ erro }}
-        </p>
+        <p v-if="erro" class="erro">{{ erro }}</p>
+        <p v-if="sucesso" class="sucesso">{{ sucesso }}</p>
 
-        <p v-if="sucesso" class="sucesso">
-          {{ sucesso }}
-        </p>
-
+        <!-- 3. MODIFICAÇÃO AQUI: O botão fica desativado se estiver enviando OU se o formulário for inválido -->
         <button
           type="submit"
           class="botao"
-          :disabled="enviando"
+          :disabled="enviando || !formularioValido"
         >
           {{ enviando ? 'Criando conta...' : 'Cadastrar' }}
         </button>
@@ -128,13 +102,8 @@ async function cadastrar() {
 
       <p class="voltar">
         Já tem uma conta?
-        <RouterLink to="/login" class="link-login">
-          Entrar
-        </RouterLink>
+        <RouterLink to="/login" class="link-login">Entrar</RouterLink>
       </p>
     </div>
   </section>
 </template>
-
-<style scoped>
-</style>

@@ -1,16 +1,15 @@
-
 .pagina {
   position: fixed;
   inset: 0;
   display: flex;
-  padding: 1.5rem 1rem;
+  padding: 1.5rem 1%;
   overflow-y: auto;
   background: #ffffff;
 }
 
 .cartao {
   width: 100%;
-  max-width: 300px;
+  max-width: 400px;
   margin: auto;
   padding: clamp(1.25rem, 5vw, 2rem);
   background: #ffffff;
@@ -23,6 +22,7 @@ h1 {
   color: #111111;
   text-align: center;
   font-size: clamp(1.5rem, 6vw, 2rem);
+  margin-bottom: 1.5rem; /* Adicionado para não colar no primeiro input */
 }
 
 .texto-suave {
@@ -54,13 +54,14 @@ label {
   border: 1px solid #cccccc;
   background: #ffffff;
   border-radius: 8px;
-  transition:transform border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease; /* Removido o scale daqui para evitar bugs de layout */
 }
 
+/* Substituído o scale por box-shadow, que é visualmente mais elegante e seguro para formulários */
 .input:focus {
-  transform: scale(1.05);
   outline: none;
   border-color: #111111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.15); 
 }
 
 .erro {
@@ -76,16 +77,34 @@ label {
 }
 
 .botao {
-  width: 100%;
-  transition: transform .2s ease-out;
+  display: block;
+  margin: 2rem auto 1rem auto; /* Ajustado os espaçamentos */
+  padding: 0.75rem 4rem; /* Modificado para padding fixo nas laterais */
+  width: 100%; /* Faz o botão ocupar toda a largura do cartão, melhor para UX */
+  max-width: 280px; /* Limita o tamanho máximo para manter o estilo elegante */
+  
+  border-radius: 40px;
+  background-color: #111111;
+  border: none;
+
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: opacity 0.2s, background-color 0.2s, transform 0.1s;
 }
 
-.botao:active{
-background-color: #333333;
+.botao:not(:disabled):hover {
+  opacity: 0.9;
 }
+
+.botao:not(:disabled):active {
+  transform: scale(0.98); }
 
 .botao:disabled {
-  opacity: 0.6;
+  background-color: transparent;
+  color: transparent;
   cursor: not-allowed;
 }
 
@@ -100,4 +119,28 @@ background-color: #333333;
 .link-login {
   color: #ff5700;
   font-weight: 600;
+  text-decoration: none;
+}
+
+.link-login:hover {
+  text-decoration: underline;
+}
+
+/* Telas Mobile */
+@media (max-width: 480px) {
+  .pagina {
+    padding: 1rem;
+    background: #ffffff; 
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+  .botao {
+    max-width: 100%; 
+  }
+
+  .logo-wrapper {
+    width: 76px;
+    height: 76px;
+  }
 }

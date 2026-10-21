@@ -299,3 +299,15 @@ background-color: #333333;
   color: #ff5700;
   font-weight: 600;
 }
+
+@media (max-width: 480px) {
+  .pagina {
+    padding: 1rem;
+  }
+
+  .cartao {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+}

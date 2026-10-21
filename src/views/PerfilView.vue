@@ -2,7 +2,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import '@/assets/telas/perfil.css'
+import '@/assets/style-telas/perfil.css'
+import router from '@/router'
 
 const authStore = useAuthStore()
 
@@ -31,6 +32,11 @@ onMounted(() => {
     tema.value
   )
 })
+
+
+function voltar() {
+  router.push('/login');
+}
 </script>
 
 <template>
@@ -83,10 +89,43 @@ onMounted(() => {
       <span class="interruptor-circulo"></span>
     </span>
   </button>
+ 
+  <button type="button" class="opcao-item" @click="voltar">
+            <ion-icon name="close-circle-outline"></ion-icon>
+            <span>Sair da sua conta?</span>
+ </button>
+  
 </div>
 
-  </section>
+</section>
 </template>
 
 <style scoped>
+
+.opcao-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: left;
+  font-size: 0.95rem;
+  margin-top:20px ;
+}
+
+.opcao-item ion-icon {
+  font-size: 1.2rem;
+  color: red;
+
+
+.opcao-item:active {
+  border-color: var(--cor-primaria);
+  background: var(--cor-superficie-hover);
+}
+}
+
+.opcao-item:hover {
+  border-color: var(--cor-primaria);
+  background: var(--cor-superficie-hover);
+}
+
 </style>
