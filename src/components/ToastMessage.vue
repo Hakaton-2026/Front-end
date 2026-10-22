@@ -2,13 +2,22 @@
 import { useToastStore } from "@/stores/toast";
 const toastStore = useToastStore();
 
-// Exemplo de uso do Toast no template
+// Exemplo de uso do Toast no template (SUCESS)
 
 // import { useToastStore } from '@/stores/toast'
 // const useToast = useToastStore()
 // function handleClick(){
 //   return useToast.showToast('Abriu aqui')
 // }
+
+// Exemplo para mensagem de erro
+
+// import { useToastStore } from '@/stores/toast'
+// const useToast = useToastStore()
+// function handleClick(){
+//   return useToast.showToast('TESTE ERRO', 'error')
+// }
+
 
 </script>
 <template>
