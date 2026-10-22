@@ -8,26 +8,57 @@ const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-const form = reactive({ email: '', senha: '' })
+const form = reactive({
+  email: '',
+  senha: '',
+})
+
 const erro = ref('')
 const enviando = ref(false)
 
-// Transforma o erro da requisição numa frase para a pessoa
-function mensagemDeErro(e) {
-  if (!e.response) return 'Não foi possível conectar ao servidor.'
-  if (e.response.status >= 500) return 'Erro no servidor. Tente de novo em instantes.'
-  return e.response.data?.mensagem || 'E-mail ou senha incorretos.'
+function mensagemDeErro(error) {
+  const dados = error.response?.data
+
+  if (error.mensagem) return error.mensagem
+  if (dados?.detail) return dados.detail
+
+  if (dados?.non_field_errors?.length) {
+    return dados.non_field_errors[0]
+  }
+
+  if (!error.response) {
+    return 'Não foi possível conectar ao servidor.'
+  }
+
+  if (error.response.status >= 500) {
+    return 'Ocorreu um erro no servidor. Tente novamente em instantes.'
+  }
+
+  if (
+    error.response.status === 401
+    || error.response.status === 400
+  ) {
+    return 'E-mail ou senha incorretos. Confira também se seu e-mail já foi verificado.'
+  }
+
+  return 'Não foi possível entrar. Verifique os dados e tente novamente.'
 }
 
 async function entrar() {
   erro.value = ''
   enviando.value = true
+
   try {
-    await auth.entrar(form.email, form.senha)
-    // Se a pessoa foi mandada para cá ao tentar abrir uma página protegida, volta para ela
-    router.push(route.query.voltar || '/perfil')
-  } catch (e) {
-    erro.value = mensagemDeErro(e)
+    await auth.login(form.email.trim(), form.senha)
+    await auth.fetchUser()
+
+    const destino = typeof route.query.voltar === 'string'
+      ? route.query.voltar
+      : '/perfil'
+
+    await router.push(destino)
+  } catch (error) {
+    erro.value = mensagemDeErro(error)
   } finally {
     enviando.value = false
   }
@@ -43,30 +74,48 @@ async function entrar() {
       <form class="formulario" @submit.prevent="entrar">
         <label>
           E-mail
-          <input class="input" v-model="form.email" type="email" required autocomplete="email" />
+          <input
+            v-model="form.email"
+            class="input"
+            type="email"
+            required
+            autocomplete="email"
+          />
         </label>
 
         <label>
           Senha
-          <input class="input" v-model="form.senha" type="password" required autocomplete="current-password" />
+          <input
+            v-model="form.senha"
+            class="input"
+            type="password"
+            required
+            autocomplete="current-password"
+          />
         </label>
 
-        <p v-if="erro" class="erro">{{ erro }}</p>
+        <p v-if="erro" class="erro" role="alert">
+          {{ erro }}
+        </p>
 
-        <button type="submit" class="botao" :disabled="enviando">
+        <button
+          type="submit"
+          class="botao"
+          :disabled="enviando"
+        >
           {{ enviando ? 'Entrando...' : 'Entrar' }}
         </button>
       </form>
 
       <p class="voltar">
         Você não tem uma conta ainda?
-        <RouterLink to="/cadastro" class="link-cadastro">Clique aqui</RouterLink>
+        <RouterLink to="/cadastro" class="link-cadastro">
+          Clique aqui
+        </RouterLink>
       </p>
     </div>
   </section>
 </template>
 
 <style scoped>
-
-
 </style>

@@ -35,9 +35,8 @@
 
 * {
   box-sizing: border-box;
-  margin:0;
+  margin: 0;
   padding: 0;
-  box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -92,6 +91,7 @@ a:hover {
 /* =========================
    TÍTULOS E TEXTOS
 ========================= */
+
 h1,
 h2,
 h3,
@@ -115,6 +115,7 @@ small,
 /* =========================
    CARTÕES E PAINÉIS
 ========================= */
+
 .card,
 .cartao,
 .painel {
@@ -128,6 +129,7 @@ small,
 /* =========================
    BOTÕES
 ========================= */
+
 button,
 .botao {
   padding: 0.7rem 1rem;
@@ -135,11 +137,13 @@ button,
   border-radius: var(--raio);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
     transform 0.2s ease;
 }
+
 .botao-principal {
   background: var(--cor-primaria);
   border-color: var(--cor-primaria);
@@ -154,6 +158,7 @@ button,
 /* =========================
    CAMPOS DE FORMULÁRIO
 ========================= */
+
 input,
 textarea,
 select {
@@ -167,7 +172,7 @@ select {
   transition: border-color 0.2s ease;
 }
 
-input::plceholder,
+input::placeholder,
 textarea::placeholder {
   color: var(--cor-texto-suave);
 }
@@ -189,6 +194,7 @@ button:disabled {
 /* =========================
    TABELAS
 ========================= */
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -202,6 +208,9 @@ td {
   text-align: left;
 }
 
+/* =========================
+   RESPONSIVIDADE
+========================= */
 
 @media (max-width: 600px) {
   .card,

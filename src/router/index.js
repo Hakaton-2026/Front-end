@@ -3,32 +3,30 @@ import HomeView from '@/views/HomeView.vue'
 import { NOME_SITE } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 
-/*
-  ESCOLHA AQUI quem pode o quê. Use o `name` da rota.
+const rotasPublicas = [
+  'home',
+  'sobre',
+  'login',
+  'cadastro',
+  'verificar',
+]
 
-  rotasPublicas          qualquer pessoa abre, mesmo sem login.
-                         Toda rota que NÃO está nesta lista exige login.
+const rotasSemLayout = [
+  'login',
+  'cadastro',
+  'verificar',
+]
 
-  rotasSemLayout         páginas sem menu e sem rodapé.
+const rotasSoParaVisitantes = [
+  'login',
+  'cadastro',
+]
 
-  rotasSoParaVisitantes  só para quem NÃO está logado (quem já entrou é mandado para o início).
-*/
-const rotasPublicas = ['sobre', 'login', 'cadastro', 'verificar','home','perfil']
-const rotasSemLayout = ['login', 'cadastro', 'verificar']
-const rotasSoParaVisitantes = ['login', 'cadastro']
-
-/*
-  Para criar uma página nova:
-  1. crie o arquivo em src/views (ex.: ProdutosView.vue)
-  2. adicione um item na lista abaixo, antes da última rota
-  3. se ela puder ser aberta sem login, coloque o name dela em rotasPublicas
-  4. para aparecer no menu, adicione também em `links` no src/components/AppNavbar.vue
-
-  meta.titulo -> título que aparece na aba do navegador
-*/
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+
   scrollBehavior: () => ({ top: 0 }),
+
   routes: [
     {
       path: '/',
@@ -49,7 +47,7 @@ const router = createRouter({
       meta: { titulo: 'Meu perfil' },
     },
     {
-      path: '/Login',
+      path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
       meta: { titulo: 'Login' },
@@ -64,33 +62,48 @@ const router = createRouter({
       path: '/verificar',
       name: 'verificar',
       component: () => import('@/views/verificarEmailView.vue'),
-      meta: { titulo: 'Verificar' },
+      meta: { titulo: 'Verificar e-mail' },
     },
     {
-      // Endereço que não existe volta para o início (precisa ser a última rota)
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
-  // Página privada sem login: vai para o login, guardando para onde a pessoa queria ir
-  if (!rotasPublicas.includes(to.name) && !auth.logado) {
-    return { name: 'login', query: { voltar: to.fullPath } }
+  // Recupera os dados da conta quando já existe um token salvo.
+  if (auth.isAuthenticated && !auth.user) {
+    await auth.fetchUser()
   }
 
-  // Login e cadastro não fazem sentido para quem já entrou
-  if (rotasSoParaVisitantes.includes(to.name) && auth.logado) {
+  // Impede o acesso a páginas privadas sem autenticação.
+  if (!rotasPublicas.includes(to.name) && !auth.isAuthenticated) {
+    return {
+      name: 'login',
+      query: { voltar: to.fullPath },
+    }
+  }
+
+  // Uma conta autenticada não precisa voltar ao login ou cadastro.
+  if (
+    rotasSoParaVisitantes.includes(to.name)
+    && auth.isAuthenticated
+  ) {
     return { name: 'home' }
   }
+
+  return true
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.titulo ? `${to.meta.titulo} | ${NOME_SITE}` : NOME_SITE
+  document.title = to.meta.titulo
+    ? `${to.meta.titulo} | ${NOME_SITE}`
+    : NOME_SITE
 })
 
-export {rotasPublicas , rotasSemLayout }
+export { rotasPublicas, rotasSemLayout }
+
 export default router
