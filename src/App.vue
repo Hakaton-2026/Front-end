@@ -10,81 +10,119 @@ import AppFooter from '@/components/AppFooter.vue'
 import { rotasSemLayout } from './router'
 
 const route = useRoute()
-
 const sidebarAberta = ref(false)
 
-const comLayout = computed(
-  () => !rotasSemLayout.includes(route.name)
-)
+const comLayout = computed(() => {
+  return !rotasSemLayout.includes(route.name)
+})
 
 function fecharSidebar() {
   sidebarAberta.value = false
+}
+
+function alternarSidebar() {
+  sidebarAberta.value = !sidebarAberta.value
 }
 </script>
 
 <template>
   <div class="app">
-    <!-- Header: largura total da tela -->
-    <AppNavbar v-if="comLayout" />
-
-    <!-- Botão para abrir a sidebar no celular -->
-    <button
-      v-if="comLayout"
-      class="botao-sidebar"
-      type="button"
-      :aria-label="sidebarAberta ? 'Fechar menu' : 'Abrir menu'"
-      :aria-expanded="sidebarAberta"
-      @click="sidebarAberta = !sidebarAberta"
-    >
-      <ion-icon
-        :name="sidebarAberta ? 'close-outline' : 'menu-outline'"
-      ></ion-icon>
-    </button>
-
-    <!-- Menu lateral -->
+    <!-- Sidebar fixa à esquerda -->
     <AppSidebar
       v-if="comLayout"
       :aberto="sidebarAberta"
       @fechar="fecharSidebar"
     />
 
-    <!-- Conteúdo de todas as páginas -->
+    <!-- Área inteira à direita da sidebar -->
     <div :class="['app-area', { 'sem-layout': !comLayout }]">
-      <main class="container conteudo">
+
+      <!-- Header ocupa somente a área disponível -->
+      <AppNavbar v-if="comLayout" />
+
+      <!-- Botão para abrir a sidebar no celular -->
+      <button
+        v-if="comLayout"
+        class="botao-sidebar"
+        type="button"
+        :aria-label="sidebarAberta ? 'Fechar menu' : 'Abrir menu'"
+        :aria-expanded="sidebarAberta"
+        @click="alternarSidebar"
+      >
+        <ion-icon
+          :name="sidebarAberta ? 'close-outline' : 'menu-outline'"
+        ></ion-icon>
+      </button>
+
+      <!-- Conteúdo das páginas -->
+      <main class="conteudo">
         <RouterView />
       </main>
 
+      <!-- Rodapé -->
       <AppFooter v-if="comLayout" />
+
     </div>
   </div>
 </template>
 
-<style scoped>
+<style>
+:root {
+  --largura-sidebar: 260px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow-x: hidden;
+}
+
 .app {
+  display: flex;
+  width: 100%;
   min-height: 100vh;
 }
 
+/* Área à direita do menu lateral */
 .app-area {
-  margin-left: var(--largura-sidebar, 260px);
-  min-width: 0;
-  min-height: calc(100vh - 64px);
-
   display: flex;
   flex-direction: column;
+
+  width: calc(100% - var(--largura-sidebar));
+  min-width: 0;
+  min-height: 100vh;
+
+  margin-left: var(--largura-sidebar);
 }
 
+/* Páginas sem header, sidebar e footer */
 .app-area.sem-layout {
+  width: 100%;
   margin-left: 0;
 }
 
+/* Conteúdo das páginas */
 .conteudo {
   flex: 1;
   width: 100%;
-  box-sizing: border-box;
-  padding-top: 2rem;
-  padding-bottom: 2rem;
+  min-width: 0;
+  margin: 0;
+  padding: 2rem;
 }
 
+/* Botão mobile */
 .botao-sidebar {
   display: none;
   position: fixed;
@@ -95,21 +133,28 @@ function fecharSidebar() {
   align-items: center;
   justify-content: center;
 
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
 
-  color: var(--cor-texto);
-  background: var(--cor-superficie);
   border: 1px solid var(--cor-borda);
-  border-radius: 8px;
+  border-radius: 10px;
 
-  font-size: 25px;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+
+  font-size: 1.5rem;
   cursor: pointer;
 }
 
+/* Tablets e celulares */
 @media (max-width: 768px) {
   .app-area {
+    width: 100%;
     margin-left: 0;
+  }
+
+  .conteudo {
+    padding: 1rem;
   }
 
   .botao-sidebar {

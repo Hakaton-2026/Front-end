@@ -78,7 +78,7 @@ async function sair() {
           class="sidebar-link"
           @click="fecharMenu"
         >
-          <ion-icon name="chatbubbles-outline" />
+          <ion-icon name="grid-outline" />
           <span>Meu Kanban</span>
         </RouterLink>
       </li>
@@ -322,9 +322,7 @@ async function sair() {
   transition: background-color 0.2s ease;
 }
 
-.perfil-botao:hover {
-  background: var(--cor-superficie-hover);
-}.logo-sidebar {
+.logo-sidebar {
   display: block;
   width: 200px;
   max-width: 100%;
@@ -371,6 +369,7 @@ async function sair() {
 
 .perfil-dados strong,
 .conta-dados strong {
+    color:#fff;
   overflow: hidden;
   font-size: 13px;
   font-weight: 600;
@@ -381,7 +380,7 @@ async function sair() {
 .perfil-dados span,
 .conta-dados span {
   overflow: hidden;
-  color: var(--cor-texto-suave);
+  color:#fff;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -390,7 +389,7 @@ async function sair() {
 .perfil-seta {
   flex-shrink: 0;
   font-size: 18px;
-  color: var(--cor-texto-suave);
+  color:#fff;
 }
 
 /* Painel que abre acima do perfil */
@@ -404,7 +403,7 @@ async function sair() {
   padding: 12px;
 
   color: var(--cor-texto);
-  background: var(--cor-superficie);
+  background: transparent;
   border: 1px solid var(--cor-borda);
   border-radius: 12px;
   box-shadow: 0 8px 28px rgb(0 0 0 / 20%);
@@ -461,7 +460,7 @@ async function sair() {
   width: 100%;
   padding: 10px 8px;
 
-  color: var(--cor-texto);
+  color: #fff;
   background: transparent;
   border: 0;
   border-radius: 8px;
@@ -474,9 +473,6 @@ async function sair() {
   font-size: 19px;
 }
 
-.dropdown-link:hover {
-  background: var(--cor-superficie-hover);
-}
 
 .sair-link {
   color: #ef4444;
