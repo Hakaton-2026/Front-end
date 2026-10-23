@@ -15,15 +15,84 @@ const form = reactive({
 
 const erro = ref('')
 const enviando = ref(false)
+const precisaVerificarEmail = ref(false)
+const emailNaoVerificado = ref('')
+const indoParaVerificacao = ref(false)
+
+function extrairMensagens(valor) {
+  if (typeof valor === 'string') {
+    return valor
+  }
+
+  if (Array.isArray(valor)) {
+    return valor
+      .map(extrairMensagens)
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  if (valor && typeof valor === 'object') {
+    return Object.values(valor)
+      .map(extrairMensagens)
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  return ''
+}
+
+function erroDeEmailNaoVerificado(error) {
+  const dados = error.response?.data
+
+  if (dados?.code === 'email_not_verified') {
+    return true
+  }
+
+  const mensagem = [
+    extrairMensagens(dados),
+    error.mensagem || '',
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  return (
+    mensagem.includes('verificar seu e-mail')
+    || mensagem.includes('verificar o e-mail')
+    || mensagem.includes('email_not_verified')
+    || mensagem.includes('e-mail não verificado')
+  )
+}
 
 function mensagemDeErro(error) {
   const dados = error.response?.data
 
-  if (error.mensagem) return error.mensagem
-  if (dados?.detail) return dados.detail
+  if (typeof dados === 'string' && dados.trim()) {
+    return dados
+  }
+
+  if (Array.isArray(dados)) {
+    return extrairMensagens(dados)
+  }
+
+  if (dados?.detail) {
+    return extrairMensagens(dados.detail)
+  }
 
   if (dados?.non_field_errors?.length) {
-    return dados.non_field_errors[0]
+    return extrairMensagens(dados.non_field_errors)
+  }
+
+  if (dados && typeof dados === 'object') {
+    const mensagem = extrairMensagens(dados)
+
+    if (mensagem) return mensagem
+  }
+
+  if (
+    error.mensagem
+    && !/^Erro \d+\.$/.test(error.mensagem)
+  ) {
+    return error.mensagem
   }
 
   if (!error.response) {
@@ -38,7 +107,7 @@ function mensagemDeErro(error) {
     error.response.status === 401
     || error.response.status === 400
   ) {
-    return 'E-mail ou senha incorretos. Confira também se seu e-mail já foi verificado.'
+    return 'E-mail ou senha incorretos.'
   }
 
   return 'Não foi possível entrar. Verifique os dados e tente novamente.'
@@ -46,10 +115,16 @@ function mensagemDeErro(error) {
 
 async function entrar() {
   erro.value = ''
+  precisaVerificarEmail.value = false
+  emailNaoVerificado.value = ''
   enviando.value = true
 
   try {
-    await auth.login(form.email.trim(), form.senha)
+    await auth.login(
+      form.email.trim(),
+      form.senha,
+    )
+
     await auth.fetchUser()
 
     const destino = typeof route.query.voltar === 'string'
@@ -58,9 +133,54 @@ async function entrar() {
 
     await router.push(destino)
   } catch (error) {
-    erro.value = mensagemDeErro(error)
+    precisaVerificarEmail.value =
+      erroDeEmailNaoVerificado(error)
+
+    if (precisaVerificarEmail.value) {
+      emailNaoVerificado.value =
+        error.response?.data?.email || form.email.trim()
+
+      erro.value =
+        'Seu e-mail ainda não foi verificado. '
+        + 'Confirme o código para poder entrar.'
+    } else {
+      erro.value = mensagemDeErro(error)
+    }
   } finally {
     enviando.value = false
+  }
+}
+
+async function irParaVerificacao() {
+  const email = emailNaoVerificado.value || form.email.trim()
+
+  if (!email) {
+    erro.value = 'Informe seu e-mail para continuar a verificação.'
+    return
+  }
+
+  indoParaVerificacao.value = true
+
+  try {
+    // Preserva o e-mail para a tela de verificação e o reenvio do código.
+    auth.setPendingEmail(email)
+
+    // Gera um código novo (e o mostra no console no modo de teste),
+    // pois o último pode ter expirado ou nunca ter sido visto.
+    try {
+      await auth.resend2FACode()
+    } catch (erroReenvio) {
+      console.error('Não foi possível gerar um novo código:', erroReenvio)
+    }
+
+    await router.push({
+      name: 'verificar',
+    })
+  } catch (error) {
+    console.error('Erro ao abrir a verificação de e-mail:', error)
+    erro.value = 'Não foi possível abrir a tela de verificação.'
+  } finally {
+    indoParaVerificacao.value = false
   }
 }
 </script>
@@ -69,11 +189,15 @@ async function entrar() {
   <section class="pagina">
     <div class="cartao">
       <h1>Login</h1>
-      <p class="texto-suave">Use o e-mail e a senha da sua conta.</p>
+
+      <p class="texto-suave">
+        Use o e-mail e a senha da sua conta.
+      </p>
 
       <form class="formulario" @submit.prevent="entrar">
         <label>
           E-mail
+
           <input
             v-model="form.email"
             class="input"
@@ -85,6 +209,7 @@ async function entrar() {
 
         <label>
           Senha
+
           <input
             v-model="form.senha"
             class="input"
@@ -94,14 +219,32 @@ async function entrar() {
           />
         </label>
 
-        <p v-if="erro" class="erro" role="alert">
+        <p
+          v-if="erro"
+          class="erro"
+          role="alert"
+        >
           {{ erro }}
         </p>
 
         <button
+          v-if="precisaVerificarEmail"
+          type="button"
+          class="botao"
+          :disabled="indoParaVerificacao"
+          @click="irParaVerificacao"
+        >
+          {{
+            indoParaVerificacao
+              ? 'Abrindo verificação...'
+              : 'Verificar e-mail'
+          }}
+        </button>
+
+        <button
           type="submit"
           class="botao"
-          :disabled="enviando"
+          :disabled="enviando || indoParaVerificacao"
         >
           {{ enviando ? 'Entrando...' : 'Entrar' }}
         </button>
@@ -109,7 +252,11 @@ async function entrar() {
 
       <p class="voltar">
         Você não tem uma conta ainda?
-        <RouterLink to="/cadastro" class="link-cadastro">
+
+        <RouterLink
+          to="/cadastro"
+          class="link-cadastro"
+        >
           Clique aqui
         </RouterLink>
       </p>

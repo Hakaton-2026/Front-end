@@ -39,14 +39,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Disponibiliza a alteração do e-mail para as telas do frontend.
+  function setPendingEmail(email) {
+    definirEmailPendente(email)
+  }
+
   function mostrarCodigoDeTeste(resposta, origem) {
     const codigo = resposta?.debug_verification_code
 
-    if (!codigo) return
+    if (codigo !== undefined && codigo !== null && codigo !== '') {
+      console.log(
+        `[MODO DE TESTE] Código de verificação (${origem}):`,
+        codigo,
+      )
+      return
+    }
 
-    console.info(
-      `[MODO DE TESTE] Código de verificação (${origem}):`,
-      codigo,
+    console.warn(
+      `[MODO DE TESTE] A API respondeu ao ${origem}, mas não retornou debug_verification_code.`,
+      {
+        statusDaResposta: 'Sucesso, mas sem o campo de teste',
+        camposRecebidos: Object.keys(resposta || {}),
+      },
     )
   }
 
@@ -93,10 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const { data } = await authApi.login(
-        email,
-        password,
-      )
+      const { data } = await authApi.login(email, password)
 
       if (!data?.access || !data?.refresh) {
         throw new Error(
@@ -107,20 +118,18 @@ export const useAuthStore = defineStore('auth', () => {
       accessToken.value = data.access
       refreshToken.value = data.refresh
 
-      setTokens(
-        data.access,
-        data.refresh,
-        rememberMe,
-      )
-
+      setTokens(data.access, data.refresh, rememberMe)
       definirEmailPendente(null)
 
       return data
     } catch (err) {
+      const dados = err.response?.data
+
       error.value =
-        err.mensagem
-        || err.response?.data?.detail
-        || err.response?.data?.non_field_errors?.[0]
+        dados?.detail
+        || dados?.non_field_errors?.[0]
+        || (Array.isArray(dados) ? dados[0] : null)
+        || err.mensagem
         || 'Erro ao fazer login.'
 
       throw err
@@ -147,7 +156,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const response = await authApi.me()
-
       user.value = response.data
 
       if (user.value?.theme) {
@@ -181,19 +189,19 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authApi.register(data)
 
-      mostrarCodigoDeTeste(
-        response.data,
-        'cadastro',
-      )
+      mostrarCodigoDeTeste(response.data, 'cadastro')
 
       return response.data
     } catch (err) {
+      const dados = err.response?.data
+
       error.value =
-        err.mensagem
-        || err.response?.data?.detail
-        || err.response?.data?.email?.[0]
-        || err.response?.data?.name?.[0]
-        || err.response?.data?.password?.[0]
+        dados?.detail
+        || dados?.email?.[0]
+        || dados?.name?.[0]
+        || dados?.password?.[0]
+        || (Array.isArray(dados) ? dados[0] : null)
+        || err.mensagem
         || 'Erro ao criar usuário.'
 
       definirEmailPendente(null)
@@ -216,10 +224,7 @@ export const useAuthStore = defineStore('auth', () => {
     return authApi.uploadImage(file)
   }
 
-  async function changePassword(
-    currentPassword,
-    newPassword,
-  ) {
+  async function changePassword(currentPassword, newPassword) {
     loading.value = true
     error.value = null
 
@@ -250,10 +255,7 @@ export const useAuthStore = defineStore('auth', () => {
       )
     }
 
-    const { data } = await authApi.verifyEmail(
-      email,
-      codigo,
-    )
+    const { data } = await authApi.verifyEmail(email, codigo)
 
     if (!data?.access || !data?.refresh) {
       throw new Error(
@@ -264,12 +266,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = data.access
     refreshToken.value = data.refresh
 
-    setTokens(
-      data.access,
-      data.refresh,
-      false,
-    )
-
+    setTokens(data.access, data.refresh, false)
     definirEmailPendente(null)
 
     await fetchUser()
@@ -290,29 +287,23 @@ export const useAuthStore = defineStore('auth', () => {
     const response =
       await authApi.resendVerificationCode(email)
 
-    mostrarCodigoDeTeste(
-      response.data,
-      'reenvio',
-    )
+    mostrarCodigoDeTeste(response.data, 'reenvio')
 
     return response
   }
 
   if (typeof window !== 'undefined') {
-    window.addEventListener(
-      'auth:tokens-refreshed',
-      (event) => {
-        const tokens = event.detail || {}
+    window.addEventListener('auth:tokens-refreshed', (event) => {
+      const tokens = event.detail || {}
 
-        if (tokens.access) {
-          accessToken.value = tokens.access
-        }
+      if (tokens.access) {
+        accessToken.value = tokens.access
+      }
 
-        if (tokens.refresh) {
-          refreshToken.value = tokens.refresh
-        }
-      },
-    )
+      if (tokens.refresh) {
+        refreshToken.value = tokens.refresh
+      }
+    })
 
     window.addEventListener('auth:expired', () => {
       user.value = null
@@ -339,5 +330,6 @@ export const useAuthStore = defineStore('auth', () => {
     setTheme,
     verify2FA,
     resend2FACode,
+    setPendingEmail,
   }
 })
