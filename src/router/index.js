@@ -1,18 +1,32 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { NOME_SITE } from '@/config'
+import { useAuthStore } from '@/stores/auth'
 
-/*
-  Para criar uma página nova:
-  1. crie o arquivo em src/views (ex.: ProdutosView.vue)
-  2. adicione um item na lista abaixo, antes da última rota
-  3. para aparecer no menu, adicione também em `links` no src/components/AppNavbar.vue
+const rotasPublicas = [
+  'home',
+  'sobre',
+  'login', 
+  'cadastro',
+  'verificar',
+]
 
-  meta.titulo -> título que aparece na aba do navegador
-*/
+const rotasSemLayout = [
+  'login',
+  'cadastro',
+  'verificar',
+]
+
+const rotasSoParaVisitantes = [
+  'login',
+  'cadastro',
+]
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+
   scrollBehavior: () => ({ top: 0 }),
+
   routes: [
     {
       path: '/',
@@ -27,15 +41,69 @@ const router = createRouter({
       meta: { titulo: 'Sobre' },
     },
     {
-      // Endereço que não existe volta para o início (precisa ser a última rota)
+      path: '/perfil',
+      name: 'perfil',
+      component: () => import('@/views/PerfilView.vue'),
+      meta: { titulo: 'Meu perfil' },
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('@/views/LoginView.vue'),
+      meta: { titulo: 'Login' },
+    },
+    {
+      path: '/cadastro',
+      name: 'cadastro',
+      component: () => import('@/views/CadastroView.vue'),
+      meta: { titulo: 'Cadastro' },
+    },
+    {
+      path: '/verificar',
+      name: 'verificar',
+      component: () => import('@/views/verificarEmailView.vue'),
+      meta: { titulo: 'Verificar e-mail' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
   ],
 })
 
-router.afterEach((to) => {
-  document.title = to.meta.titulo ? `${to.meta.titulo} | ${NOME_SITE}` : NOME_SITE
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+
+  // Recupera os dados da conta quando já existe um token salvo.
+  if (auth.isAuthenticated && !auth.user) {
+    await auth.fetchUser()
+  }
+
+  // Impede o acesso a páginas privadas sem autenticação.
+  if (!rotasPublicas.includes(to.name) && !auth.isAuthenticated) {
+    return {
+      name: 'login',
+      query: { voltar: to.fullPath },
+    }
+  }
+
+  // Uma conta autenticada não precisa voltar ao login ou cadastro.
+  if (
+    rotasSoParaVisitantes.includes(to.name)
+    && auth.isAuthenticated
+  ) {
+    return { name: 'home' }
+  }
+
+  return true
 })
+
+router.afterEach((to) => {
+  document.title = to.meta.titulo
+    ? `${to.meta.titulo} | ${NOME_SITE}`
+    : NOME_SITE
+})
+
+export { rotasPublicas, rotasSemLayout }
 
 export default router

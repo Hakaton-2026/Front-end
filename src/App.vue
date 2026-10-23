@@ -4,14 +4,22 @@ import AppFooter from '@/components/AppFooter.vue'
 import ToastMessage from './components/ToastMessage.vue';
 </script>
 
+import {computed} from 'vue'
+import {useRoute} from 'vue-router'
+import { rotasSemLayout } from './router';
+
+const route = useRoute()
+const comLayout = computed(() => !rotasSemLayout.includes(route.name))
+</script>
 <template>
   <div class="app">
     <AppNavbar />
     <ToastMessage />
+    <AppNavbar v-if="comLayout" />
     <main class="container conteudo">
       <RouterView />
     </main>
-    <AppFooter />
+    <AppFooter v-if="comLayout" />
   </div>
 </template>
 
