@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 const rotasPublicas = [
   'home',
   'sobre',
-  'login',
+  'login', 
   'cadastro',
   'verificar',
 ]

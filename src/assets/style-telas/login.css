@@ -303,11 +303,18 @@ background-color: #333333;
 @media (max-width: 480px) {
   .pagina {
     padding: 1rem;
+    background: #ffffff; 
   }
-
   .cartao {
     border: none;
-    background: transparent;
-    box-shadow: none;
+    box-shadow: none; 
+  }
+  .botao {
+    max-width: 100%; 
+  }
+
+  .logo-wrapper {
+    width: 76px;
+    height: 76px;
   }
 }
