@@ -2,11 +2,13 @@
 :root[data-theme="escuro"] {
   color-scheme: dark;
 
-  --cor-primaria: #ff5700;
-  --cor-primaria-hover: #e64e00;
+  --cor-primaria: #A855F7;
+  --cor-primaria-hover: #a141fa;
 
   --cor-fundo: #171717;
   --cor-superficie: #222222;
+   --cor-lateral: #0f172a;
+
   --cor-superficie-hover: #2c2c2c;
 
   --cor-texto: #f5f5f5;
@@ -15,6 +17,7 @@
 
   --raio: 10px;
   --largura-max: 1100px;
+  --largura-sidebar: 260px;
   --fonte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -23,14 +26,16 @@
 
   --cor-fundo: #f8fafc;
   --cor-superficie: #ffffff;
+ --cor-lateral: #0f172a;
+
   --cor-superficie-hover: #f1f5f9;
 
   --cor-texto: #0f172a;
   --cor-texto-suave: #64748b;
   --cor-borda: #e2e8f0;
 
-  --cor-primaria: #ff5700;
-  --cor-primaria-hover: #e64e00;
+  --cor-primaria: #A855F7;
+  --cor-primaria-hover: #a141fa;
 }
 
 * {
@@ -86,6 +91,63 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* =========================
+   LAYOUT COM SIDEBAR FIXA
+========================= */
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  width: var(--largura-sidebar);
+  height: 100vh;
+
+  box-sizing: border-box;
+  overflow-y: auto;
+
+  background: var(--cor-superficie);
+  border-right: 1px solid var(--cor-borda);
+
+  z-index: 1000;
+}
+
+/* Conteúdo das páginas fica ao lado da sidebar */
+.conteudo-principal {
+  margin-left: var(--largura-sidebar);
+  min-width: 0;
+  min-height: 100vh;
+}
+
+/* Cabeçalho também começa depois da sidebar */
+.navbar {
+  margin-left: var(--largura-sidebar);
+  width: calc(100% - var(--largura-sidebar));
+  box-sizing: border-box;
+}
+
+/* No celular, a sidebar pode deslizar sobre o conteúdo */
+@media (max-width: 768px) {
+  .sidebar {
+    width: min(var(--largura-sidebar), 85vw);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .conteudo-principal {
+    margin-left: 0;
+  }
+
+  .navbar {
+    margin-left: 0;
+    width: 100%;
+  }
 }
 
 /* =========================

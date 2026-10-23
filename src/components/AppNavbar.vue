@@ -49,7 +49,6 @@ const links = [
 <style scoped>
 .navbar {
   background: var(--cor-superficie);
-  border-bottom: 1px solid var(--cor-borda);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -128,7 +127,6 @@ const links = [
 
   .links a {
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--cor-borda);
   }
 
   .links a:last-child {
