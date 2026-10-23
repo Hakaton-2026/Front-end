@@ -78,15 +78,7 @@ function pesquisar() {
           aria-label="Pesquisar"
         />
 
-        <button
-          v-if="pesquisa"
-          type="button"
-          class="limpar-pesquisa"
-          aria-label="Limpar pesquisa"
-          @click="pesquisa = ''"
-        >
-          <ion-icon name="close-circle-outline"></ion-icon>
-        </button>
+     
       </form>
 
       <!-- Notificações e perfil -->
