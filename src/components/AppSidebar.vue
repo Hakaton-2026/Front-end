@@ -63,7 +63,7 @@ async function sair() {
 
       <li>
         <RouterLink
-          to="/notificacoes"
+          to="/projetos"
           class="sidebar-link"
           @click="fecharMenu"
         >
@@ -74,7 +74,7 @@ async function sair() {
 
       <li>
         <RouterLink
-          to="/amigos"
+          to="/Kanban"
           class="sidebar-link"
           @click="fecharMenu"
         >
@@ -85,7 +85,7 @@ async function sair() {
 
       <li>
         <RouterLink
-          to="/meus-projetos"
+          to="/notas"
           class="sidebar-link"
           @click="fecharMenu"
         >

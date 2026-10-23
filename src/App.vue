@@ -1,4 +1,3 @@
-
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -10,11 +9,14 @@ import AppFooter from '@/components/AppFooter.vue'
 import { rotasSemLayout } from './router'
 
 const route = useRoute()
-
 const sidebarAberta = ref(false)
 
 const comLayout = computed(
   () => !rotasSemLayout.includes(route.name)
+)
+
+const paginaNotas = computed(
+  () => route.path.replace(/\/+$/, '') === '/notas'
 )
 
 function fecharSidebar() {
@@ -28,34 +30,44 @@ function fecharSidebar() {
     <AppNavbar v-if="comLayout" />
 
     <!-- Botão para abrir a sidebar no celular -->
-    <button
-      v-if="comLayout"
-      class="botao-sidebar"
-      type="button"
-      :aria-label="sidebarAberta ? 'Fechar menu' : 'Abrir menu'"
-      :aria-expanded="sidebarAberta"
-      @click="sidebarAberta = !sidebarAberta"
-    >
-      <ion-icon
-        :name="sidebarAberta ? 'close-outline' : 'menu-outline'"
-      ></ion-icon>
-    </button>
+   <!-- Botão da sidebar principal, exceto em Notas -->
+<button
+  v-if="comLayout && !paginaNotas"
+  class="botao-sidebar"
+  type="button"
+  :aria-label="sidebarAberta ? 'Fechar menu' : 'Abrir menu'"
+  :aria-expanded="sidebarAberta"
+  @click="sidebarAberta = !sidebarAberta"
+>
+  <ion-icon
+    :name="sidebarAberta ? 'close-outline' : 'menu-outline'"
+  />
+</button>
 
-    <!-- Menu lateral -->
-    <AppSidebar
-      v-if="comLayout"
-      :aberto="sidebarAberta"
-      @fechar="fecharSidebar"
-    />
+<!-- Sidebar principal nas demais páginas -->
+<AppSidebar
+  v-if="comLayout && !paginaNotas"
+  :aberto="sidebarAberta"
+  @fechar="fecharSidebar"
+/>
+
 
     <!-- Conteúdo de todas as páginas -->
-    <div :class="['app-area', { 'sem-layout': !comLayout }]">
-      <main class="container conteudo">
-        <RouterView />
-      </main>
+<div
+  :class="[
+    'app-area',
+    {
+      'sem-layout': !comLayout,
+      'area-notas': paginaNotas
+    }
+  ]"
+>
+  <main class="container conteudo">
+    <RouterView />
+  </main>
 
-      <AppFooter v-if="comLayout" />
-    </div>
+  <AppFooter v-if="comLayout" />
+</div>
   </div>
 </template>
 
