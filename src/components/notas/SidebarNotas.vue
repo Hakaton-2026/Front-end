@@ -1,163 +1,295 @@
 <script setup>
-// Com dois elementos na raiz (fundo + sidebar), repassamos class/style
-// do componente pai direto para a sidebar, como antes.
-defineOptions({ inheritAttrs: false })
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
-defineProps({
+const router = useRouter()
+
+const props = defineProps({
   aberta: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
 const emit = defineEmits(['fechar'])
+
+const sidebarClasses = computed(() => ({
+  aberta: props.aberta
+}))
+
+function fecharSidebar() {
+  emit('fechar')
+}
+
+function voltarAoInicio() {
+  emit('fechar')
+  router.push('/')
+}
 </script>
 
 <template>
-  <!-- Fundo escurecido: aparece só no celular e fecha a sidebar ao tocar -->
-  <div
-    class="fundo-sidebar-notas"
-    :class="{ aberta }"
-    aria-hidden="true"
-    @click="emit('fechar')"
-  ></div>
+  <Transition name="sidebar-notas">
+    <aside
+      v-if="aberta"
+      class="sidebar-notas"
+      :class="sidebarClasses"
+      aria-label="Menu de notas"
+    >
+      <div class="sidebar-notas__cabecalho">
+        <div class="sidebar-notas__titulo">
+          <ion-icon name="document-text-outline"></ion-icon>
+          <h2>Minhas notas</h2>
+        </div>
+      </div>
 
+      <nav class="sidebar-notas__menu">
+        <button
+          type="button"
+          class="sidebar-notas__item ativo"
+        >
+          <ion-icon name="document-outline"></ion-icon>
+          <span>Editor de notas</span>
+        </button>
 
+        <button
+          type="button"
+          class="sidebar-notas__item"
+        >
+          <ion-icon name="folder-outline"></ion-icon>
+          <span>Meus documentos</span>
+        </button>
 
+        <button
+          type="button"
+          class="sidebar-notas__item"
+        >
+          <ion-icon name="time-outline"></ion-icon>
+          <span>Notas recentes</span>
+        </button>
 
-  
-  <aside
-    v-bind="$attrs"
-    class="sidebar-notas"
-    :class="{ aberta }"
-    :aria-hidden="!aberta"
-  >
-    <!-- Mantenha aqui os botões e o conteúdo atual da sua sidebar -->
+        <button
+          type="button"
+          class="sidebar-notas__item"
+        >
+          <ion-icon name="star-outline"></ion-icon>
+          <span>Favoritos</span>
+        </button>
+      </nav>
 
-    <div class="cabecalho-sidebar-notas">
-      <h3>Minhas notas</h3>
+      <div class="sidebar-notas__rodape">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <span>Organize seus estudos em um só lugar.</span>
+      </div>
+    </aside>
+  </Transition>
 
-    </div>
-
-    <!-- Exemplo: coloque aqui sua lista de notas -->
-    <div class="lista-notas">
-      <!-- Conteúdo existente da sidebar -->
-    </div>
-  </aside>
+  <Transition name="fundo-sidebar">
+    <div
+      v-if="aberta"
+      class="sidebar-notas__fundo"
+      @click="fecharSidebar"
+    ></div>
+  </Transition>
 </template>
 
 <style scoped>
+/* Base estrutural do painel */
 .sidebar-notas {
-  position: fixed;
+  position: absolute;
   top: 0;
-  bottom: 0;
   left: 0;
+  bottom: 0;
 
   width: 280px;
   max-width: 85vw;
+  padding: 20px 16px;
   box-sizing: border-box;
-  padding:
-    calc(20px + env(safe-area-inset-top))
-    20px
-    calc(20px + env(safe-area-inset-bottom));
+
+  display: flex;
+  flex-direction: column;
 
   overflow-y: auto;
-  overscroll-behavior: contain;
-  background: var(--cor-superficie, #202020);
+  overflow-x: hidden;
+
+  background: var(--cor-fundo, #171717);
+  color: var(--cor-texto, #f5f5f5);
   border-right: 1px solid var(--cor-borda, #383838);
 
-  transform: translateX(-100%);
-  visibility: hidden;
-  transition:
-    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    visibility 0.3s ease,
-    box-shadow 0.3s ease;
-
-  /* Acima da barra de formatação (1300) e do fundo escurecido (1390) */
-  z-index: 1400;
+  z-index: 100;
 }
 
-.sidebar-notas.aberta {
-  transform: translateX(0);
-  visibility: visible;
-  box-shadow: 8px 0 32px rgb(0 0 0 / 35%);
+/* Customização do botão Voltar ao início (Roxo) */
+.sidebar-notas__inicio {
+  margin-top: 12px;
+  color: var(--cor-destaque, #a855f7);
+  border: 1px solid var(--cor-destaque, #a855f7) !important;
 }
 
-.cabecalho-sidebar-notas {
+.sidebar-notas__inicio:hover {
+  background: var(--cor-hover, rgb(168 85 247 / 12%)) !important;
+}
+
+/* Elementos do Cabeçalho interno */
+.sidebar-notas__cabecalho {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-
-  padding-bottom: 16px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--cor-borda, #383838);
+  gap: 10px;
+  margin-bottom: 24px;
 }
 
-.cabecalho-sidebar-notas h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--cor-texto, #fff);
-}
-
-.cabecalho-sidebar-notas button {
+.sidebar-notas__titulo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
+  gap: 10px;
+  min-width: 0;
+}
 
-  width: 36px;
-  height: 36px;
+.sidebar-notas__titulo ion-icon {
+  font-size: 24px;
+  color: var(--cor-destaque, #a855f7); /* Roxo no ícone principal */
+}
 
-  border: 1px solid var(--cor-borda, #444);
-  border-radius: 8px;
+.sidebar-notas__titulo h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sidebar-notas__fechar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+
+  color: var(--cor-texto, #f5f5f5);
   background: transparent;
-  color: var(--cor-texto, #fff);
+  border: 1px solid var(--cor-borda, #383838);
+  border-radius: 9px;
+  cursor: pointer;
+}
 
-  font-size: 22px;
+.sidebar-notas__fechar ion-icon {
+  font-size: 20px;
+}
+
+/* Links e botões de Navegação interna */
+.sidebar-notas__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sidebar-notas__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  box-sizing: border-box;
+
+  color: var(--cor-texto, #f5f5f5);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+
+  font-size: 14px;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.cabecalho-sidebar-notas button:hover {
-  background: color-mix(in srgb, currentColor 10%, transparent);
+.sidebar-notas__item ion-icon {
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
-.cabecalho-sidebar-notas button:focus-visible {
-  outline: 2px solid #ff5700;
-  outline-offset: 2px;
+.sidebar-notas__item:hover {
+  background: var(--cor-hover, rgb(128 128 128 / 12%));
+  border-color: var(--cor-borda, #383838);
 }
 
-/* Fundo escurecido (escondido no computador) */
-.fundo-sidebar-notas {
+/* Estado Ativo (Fundo roxo translúcido e bordas roxas suaves) */
+.sidebar-notas__item.ativo {
+  color: var(--cor-destaque, #a855f7);
+  background: var(--cor-hover, rgb(168 85 247 / 12%));
+  border-color: var(--cor-borda, rgb(168 85 247 / 35%));
+}
+
+/* Rodapé interno informativo */
+.sidebar-notas__rodape {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+
+  margin-top: auto;
+  padding: 20px 8px 5px;
+
+  color: var(--cor-texto-secundario, #999);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sidebar-notas__rodape ion-icon {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+/* Fundo escuro (Overlay) padrão escondido no Desktop */
+.sidebar-notas__fundo {
   display: none;
 }
 
+/* ==========================================================================
+   Responsividade - Celulares e Tablets (Comportamento de gaveta flutuante)
+   ========================================================================== */
 @media (max-width: 768px) {
-  .fundo-sidebar-notas {
-    display: block;
+  .sidebar-notas {
     position: fixed;
-    inset: 0;
-    z-index: 1390;
-
-    background: rgb(0 0 0 / 55%);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+    top: 74px;
+    width: min(280px, 85vw);
+    z-index: 1200;
   }
 
-  .fundo-sidebar-notas.aberta {
-    opacity: 1;
-    pointer-events: auto;
+  .sidebar-notas__fundo {
+    display: block;
+    position: fixed;
+    inset: 64px 0 0;
+    background: rgb(0 0 0 / 45%);
+    z-index: 1190;
   }
 }
 
+/* Animações e Transições */
+.sidebar-notas-enter-active,
+.sidebar-notas-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.sidebar-notas-enter-from,
+.sidebar-notas-leave-to {
+  transform: translateX(-100%);
+}
+
+.fundo-sidebar-enter-active,
+.fundo-sidebar-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fundo-sidebar-enter-from,
+.fundo-sidebar-leave-to {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-notas,
-  .fundo-sidebar-notas {
+  .sidebar-notas-enter-active,
+  .sidebar-notas-leave-active,
+  .fundo-sidebar-enter-active,
+  .fundo-sidebar-leave-active {
     transition: none;
   }
 }
