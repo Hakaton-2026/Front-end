@@ -24,6 +24,28 @@ const projetosApi = {
   deletar(id) {
     return apiClient.delete(`/projetos/${id}/`)
   },
+
+  // ------------------------------------------------------------
+  // Participantes (compartilhamento)
+  // ------------------------------------------------------------
+
+  listarMembros(id) {
+    return apiClient.get(`/projetos/${id}/membros/`)
+  },
+
+  // data: { usuario: <id>, papel: 'visualizador' | 'editor' }
+  adicionarMembro(id, data) {
+    return apiClient.post(`/projetos/${id}/membros/`, data)
+  },
+
+  // data: { papel: 'visualizador' | 'editor' }
+  atualizarMembro(id, membroId, data) {
+    return apiClient.patch(`/projetos/${id}/membros/${membroId}/`, data)
+  },
+
+  removerMembro(id, membroId) {
+    return apiClient.delete(`/projetos/${id}/membros/${membroId}/`)
+  },
 }
 
 export default projetosApi
