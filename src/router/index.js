@@ -65,6 +65,13 @@ const router = createRouter({
       meta: { titulo: 'Verificar e-mail' },
     },
     {
+      path: '/tarefas',
+      name: 'tarefas',
+      component: () => import('@/views/TarefasView.vue'),
+      meta: { titulo: 'Tarefas' },
+    },
+    
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
