@@ -90,6 +90,22 @@ const router = createRouter({
       meta: { titulo: 'Minhas Notas' },
     },
 
+
+    {
+ path: '/Documentos',
+      name: 'documentos',
+      component: () => import('@/views/DocumentoView.vue'),
+      meta: { titulo: 'Meus Documentos' },
+    },
+
+    {
+ path: '/Notificacao',
+      name: 'Notificacao',
+      component: () => import('@/views/NotificacaoView.vue'),
+      meta: { titulo: 'Meus Notificação' },
+    },
+
+
     {
       path: '/:pathMatch(.*)*',
       redirect: '/',

@@ -84,7 +84,7 @@ function pesquisar() {
       <!-- Notificações e perfil -->
       <div class="acoes">
         <RouterLink
-          to="/notificacoes"
+          to="/Notificacao"
           class="botao-icone"
           aria-label="Notificações"
           title="Notificações"
@@ -134,6 +134,8 @@ function pesquisar() {
   display: flex;
   align-items: center;
   gap: 1rem;
+  background-color: var(--cor-fundo);
+  border-bottom: 1px solid var(--cor-borda);
   width: 100%;
   min-width: 0;
   min-height: 70px;

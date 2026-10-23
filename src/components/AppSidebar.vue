@@ -96,7 +96,7 @@ async function sair() {
 
       <li>
         <RouterLink
-          to="/documentos"
+          to="/Documentos"
           class="sidebar-link"
           @click="fecharMenu"
         >
