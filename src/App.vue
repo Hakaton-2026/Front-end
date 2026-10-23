@@ -6,6 +6,7 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 
+import { sidebarNotasAberta } from '@/composables/useSidebarNotas'
 import { rotasSemLayout } from './router'
 
 const route = useRoute()
@@ -19,6 +20,19 @@ const paginaNotas = computed(
   () => route.path.replace(/\/+$/, '') === '/notas'
 )
 
+// O botão do header controla a sidebar da página em que você está.
+const menuAberto = computed(() =>
+  paginaNotas.value ? sidebarNotasAberta.value : sidebarAberta.value
+)
+
+function alternarMenu() {
+  if (paginaNotas.value) {
+    sidebarNotasAberta.value = !sidebarNotasAberta.value
+  } else {
+    sidebarAberta.value = !sidebarAberta.value
+  }
+}
+
 function fecharSidebar() {
   sidebarAberta.value = false
 }
@@ -26,48 +40,37 @@ function fecharSidebar() {
 
 <template>
   <div class="app">
-    <!-- Header: largura total da tela -->
-    <AppNavbar v-if="comLayout" />
+    <!-- Header: largura total da tela (já inclui o botão da sidebar) -->
+    <AppNavbar
+      v-if="comLayout"
+      :menu-aberto="menuAberto"
+      :menu-sempre-visivel="paginaNotas"
+      @alternar-menu="alternarMenu"
+    />
 
-    <!-- Botão para abrir a sidebar no celular -->
-   <!-- Botão da sidebar principal, exceto em Notas -->
-<button
-  v-if="comLayout && !paginaNotas"
-  class="botao-sidebar"
-  type="button"
-  :aria-label="sidebarAberta ? 'Fechar menu' : 'Abrir menu'"
-  :aria-expanded="sidebarAberta"
-  @click="sidebarAberta = !sidebarAberta"
->
-  <ion-icon
-    :name="sidebarAberta ? 'close-outline' : 'menu-outline'"
-  />
-</button>
-
-<!-- Sidebar principal nas demais páginas -->
-<AppSidebar
-  v-if="comLayout && !paginaNotas"
-  :aberto="sidebarAberta"
-  @fechar="fecharSidebar"
-/>
-
+    <!-- Sidebar principal nas demais páginas -->
+    <AppSidebar
+      v-if="comLayout && !paginaNotas"
+      :aberto="sidebarAberta"
+      @fechar="fecharSidebar"
+    />
 
     <!-- Conteúdo de todas as páginas -->
-<div
-  :class="[
-    'app-area',
-    {
-      'sem-layout': !comLayout,
-      'area-notas': paginaNotas
-    }
-  ]"
->
-  <main class="container conteudo">
-    <RouterView />
-  </main>
+    <div
+      :class="[
+        'app-area',
+        {
+          'sem-layout': !comLayout,
+          'area-notas': paginaNotas
+        }
+      ]"
+    >
+      <main class="container conteudo">
+        <RouterView />
+      </main>
 
-  <AppFooter v-if="comLayout" />
-</div>
+      <AppFooter v-if="comLayout" />
+    </div>
   </div>
 </template>
 
@@ -97,35 +100,9 @@ function fecharSidebar() {
   padding-bottom: 2rem;
 }
 
-.botao-sidebar {
-  display: none;
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1101;
-
-  align-items: center;
-  justify-content: center;
-
-  width: 42px;
-  height: 42px;
-
-  color: var(--cor-texto);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: 8px;
-
-  font-size: 25px;
-  cursor: pointer;
-}
-
 @media (max-width: 768px) {
   .app-area {
     margin-left: 0;
-  }
-
-  .botao-sidebar {
-    display: flex;
   }
 }
 </style>

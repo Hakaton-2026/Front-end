@@ -22,6 +22,10 @@ const emit = defineEmits(['fechar'])
     @click="emit('fechar')"
   ></div>
 
+
+
+
+  
   <aside
     v-bind="$attrs"
     class="sidebar-notas"
@@ -33,13 +37,6 @@ const emit = defineEmits(['fechar'])
     <div class="cabecalho-sidebar-notas">
       <h3>Minhas notas</h3>
 
-      <button
-        type="button"
-        aria-label="Fechar menu de notas"
-        @click="emit('fechar')"
-      >
-        <ion-icon name="close-outline" />
-      </button>
     </div>
 
     <!-- Exemplo: coloque aqui sua lista de notas -->
