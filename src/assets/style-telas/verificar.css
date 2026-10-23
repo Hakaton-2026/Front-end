@@ -1,0 +1,156 @@
+
+.verificacao-container {
+
+  position: fixed;
+  inset: 0;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  background: #ffffff;  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.verificacao-card {
+
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+  padding: clamp(1.25rem, 5vw, 2rem);
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+h1{
+  color: #0f172a;
+}
+
+.header-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 0.5rem;
+}
+
+.logo-wrapper {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--cor-borda);
+  margin-bottom: 0.5rem;
+}
+
+.logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.header-area h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.header-area p {
+  font-size: 0.95rem;
+}
+
+.error-feedback {
+  color: #dc2626;
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.input-codigo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-align: center;
+  background: transparent;
+  color: #0f172a;
+}
+
+.btn-verificar {
+  background-color: #0f172a;
+  border: none;
+  width: 100%;
+  font-weight: 700;
+}
+
+.opcoes-container {
+  margin-top: 2rem;
+}
+
+.btn-dropdown-gatilho {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+
+.btn-dropdown-gatilho > ion-icon {
+  font-size: 1.2rem;
+}
+
+.conteudo-dropdown {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.opcao-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.opcao-item ion-icon {
+  font-size: 1.2rem;
+  color: var(--cor-texto-suave);
+}
+
+.opcao-item:hover {
+  border-color: var(--cor-primaria);
+  background: var(--cor-superficie-hover);
+}
+
+/* Customização Mobile */
+@media (max-width: 480px) {
+  .verificacao-container {
+    padding: 1rem;
+  }
+
+  .verificacao-card {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .logo-wrapper {
+    width: 76px;
+    height: 76px;
+  }
+}
