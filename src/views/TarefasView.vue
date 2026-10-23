@@ -62,6 +62,7 @@ const mesAtual = ref(
 );
 
 const formulario = reactive({
+  projeto: 1, // Tem que mudar quando criar o projeto de verdade, para que não fique restrito ao 1 projeto
   titulo: "",
   descricao: "",
   prioridade: 1,
