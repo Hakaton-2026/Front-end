@@ -117,7 +117,9 @@ function pesquisar() {
 </template>
 
 <style scoped>
-/* Cabeçalho */
+/* ==========================================================================
+   1. Cabeçalho e Estrutura Principal (Navbar)
+   ========================================================================== */
 .navbar {
   position: sticky;
   top: 0;
@@ -130,55 +132,6 @@ function pesquisar() {
   box-sizing: border-box;
 }
 
-
-.barra {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  min-width: 0;
-  min-height: 70px;
-  padding: 0 1rem;
-  box-sizing: border-box;
-}
-
-.marca {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 180px;
-  overflow: hidden;
-  color: var(--cor-primaria);
-  font-size: 1.2rem;
-  font-weight: 800;
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pesquisa {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 280px;
-  height: 42px;
-  margin: 0 auto;
-  padding: 0 0.8rem;
-  box-sizing: border-box;
-  color: var(--cor-texto);
-  background: var(--cor-fundo);
-  border: 1px solid var(--cor-borda);
-  border-radius: 12px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.pesquisa:focus-within {
-  border-color: var(--cor-primaria);
-  box-shadow: 0 0 0 3px
-    color-mix(in srgb, var(--cor-primaria) 15%, transparent);
-}
-
 .barra {
   display: flex;
   align-items: center;
@@ -202,16 +155,19 @@ function pesquisar() {
   white-space: nowrap;
 }
 
+/* ==========================================================================
+   2. Campo de Pesquisa (Input) - AUMENTADO
+   ========================================================================== */
 .pesquisa {
   display: flex;
-
+  align-items: center;
   gap: 1rem;
-  flex: 0 1 400px;
-
-  height: 48px;
+  flex: 0 1 380px;      /* Aumentado de 280px para 380px (Largura) */
+  min-width: 120px;
+  height: 46px;         /* Aumentado de 42px para 46px (Altura) */
   margin: 0 0 0 auto;
   padding: 0 0.8rem;
-
+  box-sizing: border-box;
   color: var(--cor-texto);
   background: var(--cor-fundo);
   border: 1px solid var(--cor-borda);
@@ -221,8 +177,7 @@ function pesquisar() {
 
 .pesquisa:focus-within {
   border-color: var(--cor-primaria);
-  box-shadow: 0 0 0 3px
-    color-mix(in srgb, var(--cor-primaria) 15%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor-primaria) 15%, transparent);
 }
 
 .pesquisa > ion-icon {
@@ -232,7 +187,7 @@ function pesquisar() {
 }
 
 .pesquisa input {
-  flex: 1 ;
+  flex: 1;
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -243,6 +198,9 @@ function pesquisar() {
   font: inherit;
 }
 
+/* ==========================================================================
+   3. Bloco de Ações (Notificação e Perfil) - AUMENTADO
+   ========================================================================== */
 .acoes {
   display: flex;
   align-items: center;
@@ -251,7 +209,7 @@ function pesquisar() {
   flex: 0 0 auto;
 }
 
-.botao-icone,
+.botao-icone, 
 .perfil-link {
   display: flex;
   align-items: center;
@@ -260,12 +218,13 @@ function pesquisar() {
   text-decoration: none;
 }
 
+/* Sino de Notificação */
 .botao-icone {
-  width: 40px;
-  height: 40px;
+  width: 44px;           /* Aumentado de 40px para 44px */
+  height: 44px;          /* Aumentado de 40px para 44px */
   border-radius: 12px;
   color: var(--cor-texto);
-  font-size: 1.5rem;
+  font-size: 1.6rem;     /* Ícone aumentado de 1.5rem para 1.6rem */
   transition: background 0.2s, color 0.2s;
 }
 
@@ -274,9 +233,10 @@ function pesquisar() {
   background: var(--cor-fundo);
 }
 
+/* Link/Círculo do Perfil */
 .perfil-link {
-  width: 40px;
-  height: 40px;
+  width: 44px;           /* Aumentado de 40px para 44px */
+  height: 44px;          /* Aumentado de 40px para 44px */
   overflow: hidden;
   box-sizing: border-box;
   border: 2px solid var(--cor-borda);
@@ -296,6 +256,7 @@ function pesquisar() {
   object-fit: cover;
 }
 
+/* Ícone de Boneco (Fallback do Perfil) */
 .avatar-padrao {
   display: flex;
   align-items: center;
@@ -303,9 +264,12 @@ function pesquisar() {
   width: 100%;
   height: 100%;
   color: var(--cor-texto);
-  font-size: 1.4rem;
+  font-size: 1.5rem;     /* Ícone aumentado de 1.4rem para 1.5rem */
 }
 
+/* ==========================================================================
+   4. Menu e Links Responsivos (Desktop)
+   ========================================================================== */
 .botao-menu {
   display: none;
   align-items: center;
@@ -336,6 +300,9 @@ function pesquisar() {
   font-weight: 600;
 }
 
+/* ==========================================================================
+   5. Responsividade - Tablets e Telas Médias (max-width: 720px)
+   ========================================================================== */
 @media (max-width: 720px) {
   .barra {
     min-height: 64px;
@@ -359,14 +326,14 @@ function pesquisar() {
   }
 
   .botao-icone {
-    width: 32px;
+    width: 34px;
     height: 36px;
     font-size: 1.3rem;
   }
 
   .perfil-link {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
   }
 
   .botao-menu {
@@ -391,6 +358,9 @@ function pesquisar() {
   }
 }
 
+/* ==========================================================================
+   6. Responsividade - Smartphones (max-width: 420px)
+   ========================================================================== */
 @media (max-width: 420px) {
   .barra {
     gap: 0.35rem;
@@ -412,12 +382,12 @@ function pesquisar() {
   }
 
   .botao-icone {
-    width: 28px;
+    width: 30px;
   }
 
   .perfil-link {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
   }
 
   .botao-menu {
@@ -425,5 +395,7 @@ function pesquisar() {
     font-size: 1.4rem;
   }
 }
+
+
 
 </style>
