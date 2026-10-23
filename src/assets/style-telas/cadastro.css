@@ -95,19 +95,6 @@ label {
   transition: opacity 0.2s, background-color 0.2s, transform 0.1s;
 }
 
-.botao:not(:disabled):hover {
-  opacity: 0.9;
-}
-
-.botao:not(:disabled):active {
-  transform: scale(0.98); }
-
-.botao:disabled {
-  background-color: transparent;
-  color: transparent;
-  cursor: not-allowed;
-}
-
 .voltar {
   color: #333333;
   display: block;

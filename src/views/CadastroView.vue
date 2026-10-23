@@ -1,5 +1,6 @@
+
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import '@/assets/style-telas/cadastro.css'
@@ -18,13 +19,6 @@ const erro = ref('')
 const sucesso = ref('')
 const enviando = ref(false)
 
-const formularioValido = computed(() => (
-  form.nome.trim() !== ''
-  && form.email.trim() !== ''
-  && form.senha.length >= 8
-  && form.confirmarSenha.length >= 8
-))
-
 function mensagemDeErro(error) {
   const dados = error.response?.data
 
@@ -33,7 +27,6 @@ function mensagemDeErro(error) {
   if (dados?.email?.length) return dados.email[0]
   if (dados?.name?.length) return dados.name[0]
   if (dados?.password?.length) return dados.password[0]
-
   if (dados?.non_field_errors?.length) {
     return dados.non_field_errors[0]
   }
@@ -43,7 +36,7 @@ function mensagemDeErro(error) {
   }
 
   if (error.response.status >= 500) {
-    return 'Ocorreu um erro no servidor ao criar a conta. Tente novamente mais tarde.'
+    return 'Ocorreu um erro no servidor. Tente novamente mais tarde.'
   }
 
   return 'Não foi possível criar sua conta. Verifique os dados informados.'
@@ -53,13 +46,18 @@ async function cadastrar() {
   erro.value = ''
   sucesso.value = ''
 
-  if (form.senha !== form.confirmarSenha) {
-    erro.value = 'As senhas não são iguais.'
+  if (!form.nome.trim() || !form.email.trim()) {
+    erro.value = 'Preencha seu nome e e-mail.'
     return
   }
 
   if (form.senha.length < 8) {
     erro.value = 'A senha precisa ter pelo menos 8 caracteres.'
+    return
+  }
+
+  if (form.senha !== form.confirmarSenha) {
+    erro.value = 'As senhas não são iguais.'
     return
   }
 
@@ -90,10 +88,16 @@ async function cadastrar() {
     <div class="cartao">
       <h1>Criar conta</h1>
 
+      <p class="texto-suave">
+        Preencha os dados para começar.
+      </p>
+
       <form class="formulario" @submit.prevent="cadastrar">
-        <label>
+        <label for="nome">
           Nome
+
           <input
+            id="nome"
             v-model="form.nome"
             class="input"
             type="text"
@@ -103,9 +107,11 @@ async function cadastrar() {
           />
         </label>
 
-        <label>
+        <label for="email">
           E-mail
+
           <input
+            id="email"
             v-model="form.email"
             class="input"
             type="email"
@@ -115,9 +121,11 @@ async function cadastrar() {
           />
         </label>
 
-        <label>
+        <label for="senha">
           Senha
+
           <input
+            id="senha"
             v-model="form.senha"
             class="input"
             type="password"
@@ -128,9 +136,11 @@ async function cadastrar() {
           />
         </label>
 
-        <label>
+        <label for="confirmarSenha">
           Confirmar senha
+
           <input
+            id="confirmarSenha"
             v-model="form.confirmarSenha"
             class="input"
             type="password"
@@ -152,7 +162,7 @@ async function cadastrar() {
         <button
           type="submit"
           class="botao"
-          :disabled="enviando || !formularioValido"
+          :disabled="enviando"
         >
           {{ enviando ? 'Criando conta...' : 'Cadastrar' }}
         </button>
@@ -160,6 +170,7 @@ async function cadastrar() {
 
       <p class="voltar">
         Já tem uma conta?
+
         <RouterLink to="/login" class="link-login">
           Entrar
         </RouterLink>
