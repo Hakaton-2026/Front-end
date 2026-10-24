@@ -4,31 +4,31 @@ const integrantes = [
   {
     nome: 'Milena',
     cargo: 'Integrante',
-    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do backend e pela conexão com o banco de dados.',
     foto: 'images/milena.jpeg'
   },
   {
-    nome: 'Integrante 2',
+    nome: 'Victor',
     cargo: 'Integrante',
-    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    descricao: 'Integrante da equipe responsável pelo backend e apis do site.',
     foto: 'images/victor.jpg'
   },
   {
-    nome: 'Integrante 3',
+    nome: 'Pedro',
     cargo: 'Integrante',
-    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do frontend.',
     foto: 'images/pedro.jpeg'
   },
   {
-    nome: 'Integrante 4',
+    nome: 'Anderson',
     cargo: 'Integrante',
-    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do frontend e apis.',
     foto: 'images/anderson.jpeg'
   },
   {
-    nome: 'Integrante 5',
+    nome: 'Daniel',
     cargo: 'Integrante',
-    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do backend.',
     foto: 'images/Daniel.jpeg'
   }
 ]
