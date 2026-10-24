@@ -690,21 +690,36 @@ async function carregarDocumentosDrive() {
   </main>
 </template>
 
+
 <style scoped>
+/* =========================================
+   CONFIGURAÇÕES GERAIS
+========================================= */
 
 .documentos-pagina {
-  --cor-destaque: var(--cor-primaria, #A855F7);
-  --cor-destaque-hover: var(--cor-primaria-hover, #A141FA);
+  --cor-destaque: var(--cor-primaria, #a855f7);
+  --cor-destaque-hover: var(--cor-primaria-hover, #9146df);
   --fundo-card: var(--cor-superficie, #222222);
   --texto: var(--cor-texto, #f5f5f5);
   --texto-secundario: var(--cor-texto-suave, #a3a3a3);
   --borda: var(--cor-borda, #3a3a3a);
 
-  color: var(--texto);
   width: 100%;
+  max-width: 1440px;
   min-width: 0;
-  padding: 24px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(14px, 3vw, 32px);
+  box-sizing: border-box;
+
+  color: var(--texto);
   animation: entrada 0.35s ease both;
+}
+
+.documentos-pagina *,
+.documentos-pagina *::before,
+.documentos-pagina *::after {
+  box-sizing: border-box;
 }
 
 @keyframes entrada {
@@ -719,14 +734,22 @@ async function carregarDocumentosDrive() {
   }
 }
 
-/* Cabeçalho */
+/* =========================================
+   CABEÇALHO
+========================================= */
 
 .documentos-cabecalho {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 24px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
   margin-bottom: 24px;
+}
+
+.documentos-cabecalho > div:first-child {
+  flex: 1 1 280px;
+  min-width: 0;
 }
 
 .sobretitulo {
@@ -739,16 +762,18 @@ async function carregarDocumentosDrive() {
 .documentos-cabecalho h1 {
   margin: 7px 0;
   color: var(--texto);
-  font-size: clamp(24px, 3vw, 32px);
+  font-size: clamp(23px, 3vw, 34px);
   font-weight: 750;
   letter-spacing: -0.8px;
+  overflow-wrap: anywhere;
 }
 
 .documentos-cabecalho p,
 .documento-info p {
-  color: var(--texto-secundario);
   margin: 0;
+  color: var(--texto-secundario);
   font-size: 13px;
+  line-height: 1.6;
 }
 
 .acoes-cabecalho,
@@ -760,25 +785,43 @@ async function carregarDocumentosDrive() {
   gap: 10px;
 }
 
-/* Botões */
+.acoes-cabecalho {
+  justify-content: flex-end;
+}
+
+/* =========================================
+   BOTÕES PRINCIPAIS
+========================================= */
 
 .botao-principal,
 .botao-secundario {
-  min-height: 38px;
   display: inline-flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  padding: 8px 13px;
+
+  min-height: 40px;
+  padding: 9px 14px;
+
   border-radius: 9px;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+
   cursor: pointer;
+
   transition:
     background 0.2s ease,
     border-color 0.2s ease,
     transform 0.2s ease;
+}
+
+.botao-principal ion-icon,
+.botao-secundario ion-icon {
+  flex-shrink: 0;
+  font-size: 17px;
 }
 
 .botao-principal {
@@ -788,7 +831,6 @@ async function carregarDocumentosDrive() {
 }
 
 .botao-principal:hover {
-  color: #fff;
   background: var(--cor-destaque-hover);
   border-color: var(--cor-destaque-hover);
   transform: translateY(-1px);
@@ -801,8 +843,8 @@ async function carregarDocumentosDrive() {
 }
 
 .botao-secundario:hover {
-  border-color: var(--cor-destaque);
   color: var(--cor-destaque);
+  border-color: var(--cor-destaque);
 }
 
 button:disabled {
@@ -810,7 +852,9 @@ button:disabled {
   cursor: wait;
 }
 
-/* Resumo */
+/* =========================================
+   CARDS DE RESUMO
+========================================= */
 
 .resumo-documentos {
   display: grid;
@@ -823,11 +867,15 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 13px;
-  min-height: 76px;
+
+  min-width: 0;
+  min-height: 80px;
   padding: 15px;
+
   background: var(--fundo-card);
   border: 1px solid var(--borda);
   border-radius: 12px;
+
   transition: border-color 0.2s ease;
 }
 
@@ -837,46 +885,55 @@ button:disabled {
 
 .resumo-card > ion-icon {
   flex-shrink: 0;
-  font-size: 23px;
+  font-size: 24px;
   color: var(--cor-destaque);
 }
 
 .resumo-card div {
   display: grid;
+  min-width: 0;
   gap: 4px;
 }
 
 .resumo-card strong {
   color: var(--texto);
-  font-size: 21px;
+  font-size: clamp(18px, 2vw, 23px);
 }
 
 .resumo-card span {
   color: var(--texto-secundario);
   font-size: 11px;
+  line-height: 1.5;
 }
 
-/* Barra de pesquisa */
+/* =========================================
+   PESQUISA E VISUALIZAÇÃO
+========================================= */
 
 .documentos-ferramentas {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .campo-pesquisa {
-  flex: 1;
-  min-width: 0;
-  max-width: 480px;
-  height: 38px;
-  min-height: 38px;
   display: flex;
   align-items: center;
+  flex: 1;
   gap: 8px;
-  padding: 0 11px;
+
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+
   border: 1px solid var(--borda);
   border-radius: 9px;
   background: var(--fundo-card);
+
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -890,7 +947,7 @@ button:disabled {
 .campo-pesquisa > ion-icon {
   flex-shrink: 0;
   color: var(--cor-destaque);
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .campo-pesquisa input {
@@ -899,18 +956,23 @@ button:disabled {
   min-width: 0;
   height: 100%;
   padding: 0;
+
   color: var(--texto);
   background: transparent;
+
   border: 0;
   outline: 0;
-  font: inherit;
-  font-size: 12px;
   box-shadow: none;
-}
+  -webkit-appearance: none;
+  appearance: none;
 
-.campo-pesquisa input:focus {
-  outline: none;
-  box-shadow: none;
+  font: inherit;
+  font-size: 13px;
+}
+.campo-pesquisa input::-webkit-search-cancel-button,
+.campo-pesquisa input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .campo-pesquisa input::placeholder,
@@ -924,18 +986,16 @@ button:disabled {
 .acoes-documento button,
 .fechar-modal {
   display: grid;
-  align-items: center;
   place-items: center;
-  color: var(--texto-secundario);
-  background: transparent;
+
   border: 0;
   cursor: pointer;
 }
 
 .limpar-pesquisa {
   flex-shrink: 0;
-  width: 25px;
-  height: 25px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   font-size: 17px;
 }
@@ -945,23 +1005,23 @@ button:disabled {
   background: #a855f714;
 }
 
-/* Alternar lista e grade */
-
 .alternar-visualizacao {
   display: flex;
   flex-shrink: 0;
   padding: 3px;
+
+  background: var(--fundo-card);
   border: 1px solid var(--borda);
   border-radius: 9px;
-  background: var(--fundo-card);
+  
 }
 
 .alternar-visualizacao button {
-  width: 31px;
-  height: 31px;
+  width: 45px;
+  height: 45px;
   border-radius: 6px;
   font-size: 18px;
-  transition: 0.2s ease;
+  
 }
 
 .alternar-visualizacao button:hover {
@@ -973,27 +1033,38 @@ button:disabled {
   background: #a855f720;
 }
 
-/* Filtros */
+/* =========================================
+   FILTROS
+========================================= */
 
 .filtros-documentos {
   display: flex;
   gap: 7px;
+  width: 100%;
+  min-width: 0;
+
   overflow-x: auto;
   padding: 16px 0;
+
   scrollbar-width: thin;
   scrollbar-color: var(--cor-destaque) transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 .filtros-documentos button {
   flex-shrink: 0;
-  padding: 8px 11px;
+  padding: 9px 12px;
+
   color: var(--texto-secundario);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
+
   font: inherit;
   font-size: 11px;
+  white-space: nowrap;
   cursor: pointer;
+
   transition: 0.2s ease;
 }
 
@@ -1008,20 +1079,26 @@ button:disabled {
   border-color: var(--cor-destaque);
 }
 
-/* Avisos */
+/* =========================================
+   AVISOS
+========================================= */
 
 .aviso-documentos {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+
+  min-width: 0;
   margin-bottom: 14px;
-  padding: 10px 12px;
+  padding: 12px;
+
   color: var(--texto);
   background: var(--fundo-card);
   border: 1px solid var(--borda);
   border-left: 3px solid var(--cor-destaque);
   border-radius: 9px;
+
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -1035,27 +1112,30 @@ button:disabled {
   cursor: pointer;
 }
 
-.aviso-documentos button:hover {
-  color: var(--cor-destaque);
-}
-
-/* Lista de documentos */
+/* =========================================
+   LISTA DE DOCUMENTOS
+========================================= */
 
 .lista-documentos {
   display: grid;
-  gap: 9px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
 }
 
 .documento-card {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 13px;
+
+  width: 100%;
   min-width: 0;
-  padding: 12px 14px;
+  padding: 13px 15px;
+
   background: var(--fundo-card);
   border: 1px solid var(--borda);
   border-radius: 11px;
+
   transition:
     border-color 0.2s ease,
     transform 0.2s ease;
@@ -1063,26 +1143,22 @@ button:disabled {
 
 .documento-card:hover {
   border-color: var(--cor-destaque);
+  transform: translateY(-1px);
 }
 
 .icone-documento {
-  flex-shrink: 0;
-  width: 41px;
-  height: 41px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
+
+  width: 44px;
+  height: 44px;
+
   border: 0;
   border-radius: 10px;
-  font-size: 21px;
+  font-size: 22px;
   cursor: pointer;
-  transition: transform 0.2s ease;
 }
-
-.icone-documento:hover {
-  transform: scale(1.05);
-}
-
-/* Cores dos tipos de arquivo */
 
 .tipo-documento {
   color: #a855f7;
@@ -1117,9 +1193,11 @@ button:disabled {
 .documento-info h2 {
   overflow: hidden;
   margin: 0 0 5px;
+
   color: var(--texto);
   font-size: 13px;
   font-weight: 650;
+
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1132,26 +1210,34 @@ button:disabled {
 .origem-documento {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+
   color: var(--texto-secundario);
   font-size: 10px;
 }
 
-/* Ações do documento */
+/* =========================================
+   AÇÕES DOS DOCUMENTOS
+========================================= */
 
 .acoes-documento {
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  gap: 4px;
 }
 
 .acoes-documento button {
   flex-shrink: 0;
-  width: 31px;
-  height: 31px;
+  width: 35px;
+  height: 35px;
   border-radius: 7px;
-  font-size: 16px;
-  transition: 0.2s ease;
+  font-size: 17px;
+
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .acoes-documento button:hover {
@@ -1164,34 +1250,39 @@ button:disabled {
   background: #ff444415;
 }
 
-/* Visualização em grade */
+/* =========================================
+   VISUALIZAÇÃO EM GRADE
+========================================= */
 
 .modo-grade {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns:
+    repeat(auto-fill, minmax(min(100%, 245px), 1fr));
+
   align-items: stretch;
 }
 
 .modo-grade .documento-card {
-  min-height: 160px;
+  display: flex;
   align-items: flex-start;
-  flex-wrap: wrap;
   align-content: flex-start;
-  padding: 15px;
-}
+  flex-wrap: wrap;
 
-.modo-grade .icone-documento {
-  width: 43px;
-  height: 43px;
+  min-height: 165px;
+  padding: 16px;
 }
 
 .modo-grade .documento-info {
-  flex-basis: calc(100% - 60px);
+  flex: 1 1 calc(100% - 65px);
   padding-top: 3px;
 }
 
 .modo-grade .documento-info h2 {
   white-space: normal;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .modo-grade .acoes-documento {
@@ -1202,7 +1293,9 @@ button:disabled {
   border-top: 1px solid var(--borda);
 }
 
-/* Estado vazio */
+/* =========================================
+   ESTADO VAZIO
+========================================= */
 
 .estado-vazio {
   display: flex;
@@ -1210,8 +1303,10 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 12px;
+
   min-height: 260px;
-  padding: 25px 18px;
+  padding: 28px 18px;
+
   text-align: center;
   border: 1px dashed var(--borda);
   border-radius: 13px;
@@ -1220,19 +1315,21 @@ button:disabled {
 .estado-vazio-icone {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
+
+  width: 60px;
+  height: 60px;
+
   color: var(--cor-destaque);
   background: #a855f720;
   border: 1px solid #a855f735;
   border-radius: 16px;
-  font-size: 27px;
+  font-size: 28px;
 }
 
 .estado-vazio h2 {
   margin: 0;
   color: var(--texto);
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .estado-vazio p {
@@ -1243,14 +1340,18 @@ button:disabled {
   line-height: 1.7;
 }
 
-/* Modal de adicionar e editar */
+/* =========================================
+   MODAIS
+========================================= */
 
 .modal-fundo {
   position: fixed;
   inset: 0;
   z-index: 2000;
+
   display: grid;
   place-items: center;
+
   padding: 18px;
   background: #000b;
   backdrop-filter: blur(5px);
@@ -1259,8 +1360,11 @@ button:disabled {
 .modal-documento,
 .modal-visualizador {
   width: min(100%, 500px);
-  max-height: 90dvh;
+  max-height: calc(100dvh - 36px);
+
   overflow: auto;
+  overscroll-behavior: contain;
+
   color: var(--texto);
   background: var(--cor-superficie, #222222);
   border: 1px solid var(--borda);
@@ -1271,9 +1375,10 @@ button:disabled {
 .modal-cabecalho,
 .visualizador-cabecalho {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 15px;
+
   padding: 17px 19px;
   border-bottom: 1px solid var(--borda);
 }
@@ -1285,32 +1390,35 @@ button:disabled {
 }
 
 .fechar-modal {
-  width: 32px;
-  height: 32px;
   flex-shrink: 0;
-  border: 1px solid var(--borda);
+  width: 35px;
+  height: 35px;
   border-radius: 8px;
   font-size: 20px;
-  transition: 0.2s ease;
+
 }
 
 .fechar-modal:hover {
   color: var(--cor-destaque);
   border-color: var(--cor-destaque);
-  background: #a855f714;
+  
 }
 
-/* Formulário compacto */
+/* =========================================
+   FORMULÁRIO
+========================================= */
 
 .formulario-documento {
   display: grid;
-  gap: 14px;
+  gap: 15px;
   padding: 19px;
 }
 
 .formulario-documento label {
   display: grid;
-  gap: 6px;
+  gap: 7px;
+  min-width: 0;
+
   color: var(--texto);
   font-size: 12px;
   font-weight: 650;
@@ -1320,16 +1428,18 @@ button:disabled {
   display: block;
   width: 100%;
   min-width: 0;
-  height: 38px;
-  box-sizing: border-box;
-  padding: 0 10px;
+  height: 42px;
+  padding: 0 11px;
+
   color: var(--texto);
-  background: var(--cor-superficie);
+  background: var(--cor-superficie, #222222);
   border: 1px solid var(--borda);
   border-radius: 8px;
   outline: none;
+
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
+
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -1355,28 +1465,38 @@ button:disabled {
 
 .modal-acoes {
   justify-content: flex-end;
-  padding-top: 12px;
+  padding-top: 13px;
   border-top: 1px solid var(--borda);
 }
 
-/* Visualizador */
+/* =========================================
+   VISUALIZADOR
+========================================= */
 
 .modal-fundo-visualizador {
   padding: 3vh 3vw;
 }
 
 .modal-visualizador {
-  width: min(100%, 1200px);
-  height: 94dvh;
   display: flex;
   flex-direction: column;
+
+  width: min(100%, 1200px);
+  height: 94dvh;
+  max-height: 94dvh;
+
   overflow: hidden;
+}
+
+.visualizador-cabecalho {
+  flex-shrink: 0;
 }
 
 .visualizador-cabecalho > div:first-child {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
   min-width: 0;
 }
 
@@ -1387,10 +1507,13 @@ button:disabled {
 }
 
 .visualizador-cabecalho h2 {
+  min-width: 0;
   overflow: hidden;
   margin: 0;
+
   color: var(--texto);
   font-size: 14px;
+
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1412,25 +1535,78 @@ button:disabled {
   border: 0;
 }
 
-/* Responsividade */
+/* =========================================
+   TABLETS
+========================================= */
 
-@media (max-width: 760px) {
-  .documentos-pagina {
-    padding: 18px 14px;
-  }
-
+@media (max-width: 900px) {
   .documentos-cabecalho {
     align-items: flex-start;
-    flex-direction: column;
-    gap: 15px;
   }
 
   .acoes-cabecalho {
+    justify-content: flex-start;
+  }
+
+  .documento-card {
+    flex-wrap: wrap;
+  }
+
+  .documento-info {
+    flex: 1 1 calc(100% - 65px);
+  }
+
+  .acoes-documento {
     width: 100%;
+    padding-top: 9px;
+    border-top: 1px solid var(--borda);
+  }
+
+  .modo-grade .documento-card {
+    flex-wrap: wrap;
+  }
+}
+
+/* =========================================
+   CELULARES
+========================================= */
+
+@media (max-width: 600px) {
+  .documentos-pagina {
+    padding: 16px 12px 28px;
+  }
+
+  .documentos-cabecalho {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    margin-bottom: 18px;
+  }
+
+  .documentos-cabecalho > div:first-child {
+    flex-basis: auto;
+  }
+
+  .documentos-cabecalho h1 {
+    font-size: 25px;
+  }
+
+  .documentos-cabecalho p {
+    font-size: 12px;
+  }
+
+  .acoes-cabecalho {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
   }
 
   .acoes-cabecalho button {
-    flex: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 11px;
   }
 
   .resumo-documentos {
@@ -1439,17 +1615,19 @@ button:disabled {
   }
 
   .resumo-card {
-    min-height: 70px;
-    padding: 10px;
-    gap: 8px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+    min-height: 100px;
+    padding: 12px;
   }
 
   .resumo-card > ion-icon {
-    font-size: 20px;
+    font-size: 21px;
   }
 
   .resumo-card strong {
-    font-size: 18px;
+    font-size: 19px;
   }
 
   .resumo-card span {
@@ -1462,51 +1640,76 @@ button:disabled {
 
   .campo-pesquisa {
     max-width: none;
-    height: 36px;
-    min-height: 36px;
+    height: 42px;
     padding: 0 9px;
   }
 
   .campo-pesquisa input {
-    font-size: 11px;
+    font-size: 16px;
   }
 
   .alternar-visualizacao button {
-    width: 29px;
-    height: 29px;
+    width: 34px;
+    height: 34px;
   }
 
   .filtros-documentos {
+    gap: 5px;
     padding: 13px 0;
   }
 
+  .filtros-documentos button {
+    padding: 8px 10px;
+  }
+
   .documento-card {
-    flex-wrap: wrap;
     gap: 10px;
-    padding: 11px;
+    padding: 12px;
+  }
+
+  .icone-documento {
+    width: 42px;
+    height: 42px;
   }
 
   .documento-info {
     flex-basis: calc(100% - 55px);
   }
 
+  .documento-info h2 {
+    font-size: 13px;
+  }
+
   .acoes-documento {
-    width: 100%;
-    justify-content: flex-end;
-    padding-top: 8px;
-    border-top: 1px solid var(--borda);
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .acoes-documento button {
+    flex: 1;
+    width: auto;
+    min-width: 35px;
+    max-width: 52px;
+    height: 40px;
+    font-size: 18px;
   }
 
   .modo-grade {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns:
+      repeat(auto-fill, minmax(min(100%, 200px), 1fr));
   }
 
   .modo-grade .documento-card {
-    min-width: 0;
+    min-height: 155px;
   }
 
   .modal-fundo {
-    padding: 12px;
+    padding: 10px;
+  }
+
+  .modal-documento {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
   }
 
   .modal-cabecalho {
@@ -1518,17 +1721,29 @@ button:disabled {
     padding: 15px;
   }
 
+  .formulario-documento input {
+    height: 44px;
+    font-size: 16px;
+  }
+
   .modal-fundo-visualizador {
     padding: 8px;
   }
 
   .modal-visualizador {
-    height: 96dvh;
+    width: 100%;
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 12px;
   }
 
   .visualizador-cabecalho {
-    align-items: flex-start;
+    gap: 8px;
     padding: 11px;
+  }
+
+  .visualizador-cabecalho h2 {
+    font-size: 12px;
   }
 
   .acoes-visualizador {
@@ -1536,33 +1751,35 @@ button:disabled {
   }
 
   .acoes-visualizador .botao-secundario {
-    min-height: 32px;
+    min-height: 34px;
     padding: 7px;
     font-size: 10px;
   }
 }
 
-@media (max-width: 420px) {
+/* =========================================
+   CELULARES PEQUENOS
+========================================= */
+
+@media (max-width: 380px) {
   .documentos-pagina {
-    padding: 14px 10px;
+    padding: 13px 9px 24px;
   }
 
   .acoes-cabecalho {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
   .acoes-cabecalho button {
-    width: 100%;
+    min-height: 42px;
   }
 
   .resumo-card {
-    align-items: flex-start;
-    flex-direction: column;
+    padding: 10px;
   }
 
-  .resumo-card div {
-    gap: 3px;
+  .resumo-card span {
+    overflow-wrap: anywhere;
   }
 
   .modo-grade {
@@ -1577,9 +1794,24 @@ button:disabled {
   .modal-acoes button {
     width: 100%;
   }
+
+  .visualizador-cabecalho {
+    flex-wrap: wrap;
+  }
+
+  .acoes-visualizador {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
-/* Acessibilidade */
+/* =========================================
+   ACESSIBILIDADE
+========================================= */
+
+.documentos-pagina .campo-pesquisa input:focus-visible {
+  outline: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .documentos-pagina {
@@ -1593,5 +1825,5 @@ button:disabled {
     animation-duration: 0.01ms !important;
   }
 }
-
 </style>
+
