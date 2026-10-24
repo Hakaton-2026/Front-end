@@ -1,3 +1,4 @@
+
 :root,
 :root[data-theme="escuro"] {
   color-scheme: dark;
@@ -43,9 +44,19 @@
   --cor-sucesso: #16a34a;
   --cor-sucesso-texto: #fafafa;
 
-  --cor-primaria: #8b5cf6;
-  --cor-primaria-hover: #7c3aed;
+  --cor-primaria: #A855F7;
+  --cor-primaria-hover: #a141fa;
+
+  --raio: 10px;
+  --largura-max: 1100px;
+  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --cor-erro: #ef4444;
+  --cor-erro-texto: #fafafa;
+  --cor-sucesso: #16a34a;
+  --cor-sucesso-texto: #fafafa;
 }
+
 
 * {
   box-sizing: border-box;

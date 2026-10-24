@@ -1,512 +1,455 @@
-<template>
-  <main class="projetos-container">
-    <header class="cabecalho">
-      <div>
-        <h1>Meus projetos</h1>
-        <p>Gerencie os projetos do Nexos.</p>
-      </div>
-
-      <button class="btn btn-principal" @click="abrirFormulario()">
-        Novo projeto
-      </button>
-    </header>
-
-    <div v-if="loading" class="estado">
-      Carregando projetos...
-    </div>
-
-    <div v-else-if="error" class="mensagem erro">
-      {{ error }}
-      <button class="btn btn-secundario" @click="carregarProjetos">
-        Tentar novamente
-      </button>
-    </div>
-
-    <section v-else>
-      <div v-if="projetos.length === 0" class="estado vazio">
-        <h2>Nenhum projeto encontrado</h2>
-        <p>Cadastre seu primeiro projeto para começar.</p>
-        <button class="btn btn-principal" @click="abrirFormulario()">
-          Criar projeto
-        </button>
-      </div>
-
-      <div v-else class="lista-projetos">
-        <article
-          v-for="projeto in projetos"
-          :key="projeto.id"
-          class="projeto-card"
-        >
-          <div class="projeto-conteudo">
-            <div class="projeto-titulo">
-              <h2>{{ projeto.nome }}</h2>
-              <span
-                v-if="projeto.meu_papel"
-                class="selo"
-                :class="`selo-${projeto.meu_papel}`"
-              >
-                {{ rotuloPapel(projeto.meu_papel) }}
-              </span>
-            </div>
-
-            <p>{{ projeto.descricao || 'Sem descrição.' }}</p>
-
-            <small v-if="!ehProprietario(projeto) && projeto.proprietario">
-              Compartilhado por {{ nomeUsuario(projeto.proprietario) }}
-            </small>
-            <small v-else-if="projeto.total_participantes">
-              {{ textoParticipantes(projeto.total_participantes) }}
-            </small>
-
-            <small v-if="projeto.id">
-              ID: {{ projeto.id }}
-            </small>
-          </div>
-
-          <div class="acoes">
-            <button
-              v-if="ehProprietario(projeto)"
-              class="btn btn-secundario"
-              @click="abrirFormulario(projeto)"
-            >
-              Compartilhar
-            </button>
-
-            <button
-              v-if="podeEditar(projeto)"
-              class="btn btn-secundario"
-              @click="abrirFormulario(projeto)"
-            >
-              Editar
-            </button>
-
-            <button
-              v-if="ehProprietario(projeto)"
-              class="btn btn-perigo"
-              :disabled="excluindoId === projeto.id"
-              @click="excluirProjeto(projeto)"
-            >
-              {{ excluindoId === projeto.id ? 'Excluindo...' : 'Excluir' }}
-            </button>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- Criar / editar projeto (inclui pessoas e permissões) -->
-    <div v-if="formularioAberto" class="modal-fundo" @click.self="fecharFormulario">
-      <section
-        class="modal"
-        :class="{ 'modal-largo': mostrarPessoas }"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="titulo-formulario"
-      >
-        <h2 id="titulo-formulario">
-          {{ formulario.id ? 'Editar projeto' : 'Novo projeto' }}
-        </h2>
-
-        <form @submit.prevent="salvarProjeto">
-          <label for="nome">Nome do projeto</label>
-          <input
-            id="nome"
-            v-model.trim="formulario.nome"
-            type="text"
-            maxlength="150"
-            required
-            placeholder="Digite o nome do projeto"
-          />
-
-          <label for="descricao">Descrição</label>
-          <textarea
-            id="descricao"
-            v-model.trim="formulario.descricao"
-            rows="4"
-            placeholder="Descreva o projeto"
-          />
-
-          <p v-if="erroFormulario" class="mensagem erro">
-            {{ erroFormulario }}
-          </p>
-
-          <!-- Pessoas e permissões (somente proprietário) -->
-          <section v-if="mostrarPessoas" class="bloco-pessoas">
-            <h3 class="subtitulo">Pessoas com acesso</h3>
-
-            <label for="busca-usuario">Adicionar pessoa</label>
-            <input
-              id="busca-usuario"
-              v-model="termoBusca"
-              type="search"
-              autocomplete="off"
-              placeholder="Busque por nome ou e-mail"
-              :disabled="Boolean(usuarioSelecionado)"
-              @keydown.enter.prevent
-            />
-
-            <ul v-if="resultadosBusca.length" class="lista-resultados">
-              <li v-for="usuario in resultadosBusca" :key="usuario.id">
-                <button
-                  type="button"
-                  class="item-usuario"
-                  @click="selecionarUsuario(usuario)"
-                >
-                  <span class="avatar">{{ iniciais(usuario) }}</span>
-                  <span class="usuario-dados">
-                    <strong>{{ nomeUsuario(usuario) }}</strong>
-                    <small v-if="usuario.name">{{ usuario.email }}</small>
-                  </span>
-                </button>
-              </li>
-            </ul>
-
-            <p v-else-if="buscando" class="dica">Buscando...</p>
-            <p v-else-if="buscaConcluida && termoBusca.trim().length >= 2" class="dica">
-              Nenhum usuário encontrado.
-            </p>
-
-            <div v-if="usuarioSelecionado" class="selecionado">
-              <div class="item-usuario estatico">
-                <span class="avatar">{{ iniciais(usuarioSelecionado) }}</span>
-                <span class="usuario-dados">
-                  <strong>{{ nomeUsuario(usuarioSelecionado) }}</strong>
-                  <small v-if="usuarioSelecionado.name">
-                    {{ usuarioSelecionado.email }}
-                  </small>
-                </span>
-              </div>
-
-              <label class="rotulo-papel" for="papel-novo">Permissão</label>
-              <select id="papel-novo" v-model="papelNovo">
-                <option
-                  v-for="papel in PAPEIS_COMPARTILHAMENTO"
-                  :key="papel.valor"
-                  :value="papel.valor"
-                >
-                  {{ papel.rotulo }}
-                </option>
-              </select>
-
-              <p class="dica">{{ descricaoPapel(papelNovo) }}</p>
-
-              <div class="acoes modal-acoes">
-                <button
-                  type="button"
-                  class="btn btn-secundario"
-                  :disabled="adicionando"
-                  @click="limparSelecao"
-                >
-                  Cancelar
-                </button>
-
-                <button
-                  type="button"
-                  class="btn btn-principal"
-                  :disabled="adicionando"
-                  @click="adicionarPessoa"
-                >
-                  {{ adicionando ? 'Adicionando...' : 'Adicionar' }}
-                </button>
-              </div>
-            </div>
-
-            <p v-if="erroAdicionar" class="mensagem erro">
-              {{ erroAdicionar }}
-            </p>
-
-            <p v-if="carregandoMembros" class="dica">Carregando participantes...</p>
-
-            <div v-else-if="erroMembros" class="mensagem erro">
-              {{ erroMembros }}
-              <button type="button" class="btn btn-secundario" @click="carregarMembros">
-                Tentar novamente
-              </button>
-            </div>
-
-            <ul v-else class="lista-membros">
-              <li v-if="projetoAtual?.proprietario" class="membro">
-                <div class="item-usuario estatico">
-                  <span class="avatar">{{ iniciais(projetoAtual.proprietario) }}</span>
-                  <span class="usuario-dados">
-                    <strong>{{ nomeUsuario(projetoAtual.proprietario) }}</strong>
-                    <small v-if="projetoAtual.proprietario.name">
-                      {{ projetoAtual.proprietario.email }}
-                    </small>
-                  </span>
-                </div>
-                <span class="selo selo-proprietario">Proprietário</span>
-              </li>
-
-              <li v-for="pessoa in pessoas" :key="pessoa.id" class="membro">
-                <div class="item-usuario estatico">
-                  <span class="avatar">{{ iniciais(pessoa.usuario) }}</span>
-                  <span class="usuario-dados">
-                    <strong>{{ nomeUsuario(pessoa.usuario) }}</strong>
-                    <small v-if="pessoa.usuario.name">{{ pessoa.usuario.email }}</small>
-                  </span>
-                </div>
-
-                <div class="membro-acoes">
-                  <select
-                    :value="pessoa.papel"
-                    :disabled="atualizandoMembroId === pessoa.id"
-                    :aria-label="`Permissão de ${nomeUsuario(pessoa.usuario)}`"
-                    @change="alterarPapel(pessoa, $event)"
-                  >
-                    <option
-                      v-for="papel in PAPEIS_COMPARTILHAMENTO"
-                      :key="papel.valor"
-                      :value="papel.valor"
-                    >
-                      {{ papel.rotulo }}
-                    </option>
-                  </select>
-
-                  <button
-                    type="button"
-                    class="btn btn-perigo btn-pequeno"
-                    :disabled="removendoMembroId === pessoa.id"
-                    @click="removerPessoa(pessoa)"
-                  >
-                    {{ removendoMembroId === pessoa.id ? 'Removendo...' : 'Remover' }}
-                  </button>
-                </div>
-              </li>
-
-              <li v-if="pessoas.length === 0" class="dica">
-                {{
-                  formulario.id
-                    ? 'Ninguém além de você tem acesso a este projeto.'
-                    : 'Nenhuma pessoa adicionada. Você será o proprietário do projeto.'
-                }}
-              </li>
-            </ul>
-          </section>
-
-          <div class="acoes modal-acoes">
-            <button
-              type="button"
-              class="btn btn-secundario"
-              :disabled="salvando"
-              @click="fecharFormulario"
-            >
-              Cancelar
-            </button>
-
-            <button
-              type="submit"
-              class="btn btn-principal"
-              :disabled="salvando"
-            >
-              {{ salvando ? 'Salvando...' : 'Salvar' }}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
-  </main>
-</template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import apiClient from '@/api/config'
-import projetosApi from '@/api/projetosApi'
-import usuariosApi from '@/api/usuariosApi'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { useRouter, RouterLink } from 'vue-router'
 import { useToastStore } from '@/stores/toast'
+import { useAuthStore } from '@/stores/auth'
+import projetosApi from '@/api/projetosApi'
+import tarefasApi from '@/api/tarefasApi'
+import usuariosApi from '@/api/usuariosApi'
+import '@/assets/taskflow.css'
 
+const router = useRouter()
 const toast = useToastStore()
-
-const ROTULOS_PAPEL = {
-  proprietario: 'Proprietário',
-  editor: 'Editor',
-  visualizador: 'Visualizador',
-}
-
-// Papéis que o proprietário pode conceder a outras pessoas.
-const PAPEIS_COMPARTILHAMENTO = [
-  {
-    valor: 'visualizador',
-    rotulo: 'Visualizador',
-    descricao: 'Pode ver o projeto, mas não pode alterá-lo.',
-  },
-  {
-    valor: 'editor',
-    rotulo: 'Editor',
-    descricao: 'Pode ver e editar o projeto.',
-  },
-]
+const auth = useAuthStore()
 
 const projetos = ref([])
+const tarefasPorProjeto = ref({})
+const participantesPorProjeto = ref({})
 const loading = ref(false)
 const salvando = ref(false)
 const excluindoId = ref(null)
 const error = ref('')
-const erroFormulario = ref('')
-const formularioAberto = ref(false)
 
+const novoProjeto = ref('')
+const mensagem = ref('')
+const tipoMensagem = ref('')
+
+const formularioAberto = ref(false)
+const erroFormulario = ref('')
 const formulario = ref({
   id: null,
   nome: '',
   descricao: '',
 })
 
-// ------------------------------------------------------------
-// Pessoas e permissões
-// ------------------------------------------------------------
-
-// Projeto aberto no modal (null ao criar um projeto novo).
-const projetoAtual = ref(null)
-
-// Participantes já salvos no servidor (projeto existente).
-const membros = ref([])
-
-// Pessoas escolhidas antes de o projeto existir; são adicionadas ao salvar.
-const pendentes = ref([])
-
-const carregandoMembros = ref(false)
-const erroMembros = ref('')
-
-const termoBusca = ref('')
-const resultadosBusca = ref([])
-const buscando = ref(false)
-const buscaConcluida = ref(false)
+const projetoSelecionado = ref(null)
+const emailParticipante = ref('')
 const usuarioSelecionado = ref(null)
-const papelNovo = ref('visualizador')
-const adicionando = ref(false)
-const erroAdicionar = ref('')
-
-const atualizandoMembroId = ref(null)
-const removendoMembroId = ref(null)
-
-// Quem pode gerenciar pessoas: quem está criando ou o proprietário.
-const mostrarPessoas = computed(
-  () =>
-    !formulario.value.id ||
-    Boolean(projetoAtual.value && ehProprietario(projetoAtual.value)),
-)
-
-const pessoas = computed(() =>
-  formulario.value.id ? membros.value : pendentes.value,
-)
+const usuariosSugeridos = ref([])
+const buscandoUsuarios = ref(false)
+const alterandoPapelId = ref(null)
+const mensagemParticipante = ref('')
+const tipoMensagemParticipante = ref('')
 
 let temporizadorBusca = null
-let buscaAtual = 0
+let sequenciaBusca = 0
+
+const modalMateriaisAberto = ref(false)
+const projetoMateriaisAtual = ref(null)
+const materiaisProjeto = ref([])
+const carregandoMateriaisProjeto = ref(false)
+const salvandoMaterialProjeto = ref(false)
+const erroMateriaisProjeto = ref('')
+
+const formMaterialProjeto = ref({
+  titulo: '',
+  url: '',
+  descricao: '',
+})
 
 function extrairLista(data) {
-  if (Array.isArray(data)) {
-    return data
-  }
-
-  if (Array.isArray(data?.results)) {
-    return data.results
-  }
-
-  if (Array.isArray(data?.projetos)) {
-    return data.projetos
-  }
-
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.results)) return data.results
+  if (Array.isArray(data?.projetos)) return data.projetos
+  if (Array.isArray(data?.usuarios)) return data.usuarios
   return []
 }
 
-function mensagemErro(err, mensagemPadrao) {
-  const dados = err.response?.data
+function mensagemErro(erro, padrao) {
+  const dados = erro?.response?.data
 
-  if (typeof dados?.detail === 'string') {
-    return dados.detail
+  if (typeof dados === 'string') return dados
+  if (typeof dados?.detail === 'string') return dados.detail
+  if (typeof dados?.mensagem === 'string') return dados.mensagem
+  if (typeof dados?.message === 'string') return dados.message
+
+  if (dados && typeof dados === 'object') {
+    const mensagens = Object.entries(dados).map(([campo, valor]) => {
+      const texto = Array.isArray(valor)
+        ? valor.join(', ')
+        : String(valor)
+      return `${campo}: ${texto}`
+    })
+    if (mensagens.length) return mensagens.join('\n')
   }
 
-  if (typeof dados?.mensagem === 'string') {
-    return dados.mensagem
+  return erro?.message || padrao
+}
+
+async function obterUsuarioAtual() {
+  if (auth.isAuthenticated && !auth.user) {
+    await auth.fetchUser()
   }
-
-  if (typeof dados === 'object' && dados !== null) {
-    const campoComErro = Object.values(dados).find(
-      (valor) => Array.isArray(valor) && valor.length > 0,
-    )
-
-    if (campoComErro) {
-      return String(campoComErro[0])
-    }
-  }
-
-  return err.mensagem || mensagemPadrao
-}
-
-// ------------------------------------------------------------
-// Permissões e textos
-// ------------------------------------------------------------
-
-function ehProprietario(projeto) {
-  return projeto.meu_papel === 'proprietario'
-}
-
-function podeEditar(projeto) {
-  return ['proprietario', 'editor'].includes(projeto.meu_papel)
-}
-
-function rotuloPapel(papel) {
-  return ROTULOS_PAPEL[papel] || papel
-}
-
-function descricaoPapel(papel) {
-  return (
-    PAPEIS_COMPARTILHAMENTO.find((item) => item.valor === papel)?.descricao ||
-    ''
-  )
+  return auth.user
 }
 
 function nomeUsuario(usuario) {
-  return usuario?.name || usuario?.email || 'Usuário'
+  return usuario?.name || usuario?.nome || usuario?.email || 'Usuário'
 }
 
-function iniciais(usuario) {
-  const base = (usuario?.name || usuario?.email || '?').trim()
-  const partes = base.split(/\s+/).filter(Boolean)
+function nomeExibicaoParticipante(pessoa) {
+  return (
+    pessoa?.nome ||
+    pessoa?.name ||
+    pessoa?.usuario?.name ||
+    pessoa?.usuario?.nome ||
+    pessoa?.email ||
+    'Participante'
+  )
+}
 
-  if (partes.length >= 2) {
-    return (partes[0][0] + partes[1][0]).toUpperCase()
+function rotuloPapel(papel) {
+  return {
+    proprietario: 'Proprietário',
+    editor: 'Editor',
+    visualizador: 'Visualizador',
+  }[papel] || 'Participante'
+}
+
+function participantesDoProjeto(projeto) {
+  if (!projeto?.id) return []
+  return participantesPorProjeto.value[String(projeto.id)] || []
+}
+
+function mapearParticipantesProjeto(projeto, membros = []) {
+  const lista = []
+  const proprietario = projeto?.proprietario
+
+  if (proprietario?.id != null) {
+    lista.push({
+      id: `proprietario-${proprietario.id}`,
+      usuarioId: proprietario.id,
+      nome: nomeUsuario(proprietario),
+      name: nomeUsuario(proprietario),
+      email: proprietario.email || '',
+      papel: 'proprietario',
+      criador: true,
+      usuario: proprietario,
+    })
   }
 
-  return base.slice(0, 2).toUpperCase()
+  for (const membro of membros) {
+    const usuario = membro?.usuario
+    if (!usuario?.id) continue
+
+    if (
+      proprietario?.id != null &&
+      Number(usuario.id) === Number(proprietario.id)
+    ) {
+      continue
+    }
+
+    lista.push({
+      id: membro.id,
+      usuarioId: usuario.id,
+      nome: nomeUsuario(usuario),
+      name: nomeUsuario(usuario),
+      email: usuario.email || '',
+      papel: membro.papel || 'visualizador',
+      criador: false,
+      usuario,
+    })
+  }
+
+  return lista
 }
 
-function textoParticipantes(total) {
-  return total === 1
-    ? 'Compartilhado com 1 pessoa'
-    : `Compartilhado com ${total} pessoas`
+async function carregarMembrosProjeto(projeto) {
+  if (!projeto?.id) return
+
+  const resposta = await projetosApi.listarMembros(projeto.id)
+
+  participantesPorProjeto.value = {
+    ...participantesPorProjeto.value,
+    [String(projeto.id)]: mapearParticipantesProjeto(
+      projeto,
+      extrairLista(resposta.data)
+    ),
+  }
 }
 
-// ------------------------------------------------------------
-// Projetos
-// ------------------------------------------------------------
+function usuarioEhParticipante(projeto, usuario) {
+  if (!usuario) return false
+
+  const emailUsuario = String(usuario.email || '').trim().toLowerCase()
+
+  return participantesDoProjeto(projeto).some((pessoa) => {
+    const mesmoId =
+      usuario.id != null &&
+      pessoa.usuarioId != null &&
+      Number(usuario.id) === Number(pessoa.usuarioId)
+
+    const mesmoEmail =
+      Boolean(emailUsuario) &&
+      emailUsuario === String(pessoa.email || '').trim().toLowerCase()
+
+    return mesmoId || mesmoEmail
+  })
+}
+
+function ehProprietario(projeto) {
+  if (projeto?.meu_papel === 'proprietario') return true
+
+  const usuario = auth.user
+  if (!usuario) return false
+
+  return participantesDoProjeto(projeto).some((pessoa) => {
+    if (!pessoa.criador && pessoa.papel !== 'proprietario') return false
+
+    const mesmoId =
+      usuario.id != null &&
+      pessoa.usuarioId != null &&
+      Number(usuario.id) === Number(pessoa.usuarioId)
+
+    const email = String(usuario.email || '').trim().toLowerCase()
+    const mesmoEmail =
+      Boolean(email) &&
+      email === String(pessoa.email || '').trim().toLowerCase()
+
+    return mesmoId || mesmoEmail
+  })
+}
+
+function podeEditar(projeto) {
+  return (
+    ['proprietario', 'editor'].includes(projeto?.meu_papel) ||
+    ehProprietario(projeto)
+  )
+}
+
+function papelDoUsuarioNoProjeto(projeto) {
+  if (projeto?.meu_papel) return projeto.meu_papel
+
+  const usuario = auth.user
+  if (!usuario) return ''
+
+  const pessoa = participantesDoProjeto(projeto).find((participante) => {
+    const mesmoId =
+      usuario.id != null &&
+      participante.usuarioId != null &&
+      Number(usuario.id) === Number(participante.usuarioId)
+
+    const email = String(usuario.email || '').trim().toLowerCase()
+    const mesmoEmail =
+      Boolean(email) &&
+      email === String(participante.email || '').trim().toLowerCase()
+
+    return mesmoId || mesmoEmail
+  })
+
+  return pessoa?.papel || (ehProprietario(projeto) ? 'proprietario' : '')
+}
+
+function proprietarioDoProjeto(projeto) {
+  if (projeto?.proprietario) return projeto.proprietario
+
+  const pessoa = participantesDoProjeto(projeto).find(
+    (participante) =>
+      participante.criador || participante.papel === 'proprietario'
+  )
+
+  if (!pessoa) return null
+
+  return {
+    id: pessoa.usuarioId,
+    name: nomeExibicaoParticipante(pessoa),
+    email: pessoa.email,
+  }
+}
+
+function textoParticipantes(projeto) {
+  const total = Math.max(
+    Number(projeto?.total_participantes || 0),
+    participantesDoProjeto(projeto).length
+  )
+  return total === 1 ? '1 participante' : `${total} participantes`
+}
+
+function idProjetoDaTarefa(tarefa) {
+  return tarefa?.projeto?.id ?? tarefa?.projeto
+}
+
+function resumoTarefas(projeto) {
+  const lista = tarefasPorProjeto.value[String(projeto.id)] || []
+  const feitas = lista.filter(
+    (tarefa) => Number(tarefa.situacao) === 3
+  ).length
+
+  return {
+    total: lista.length,
+    feitas,
+    pendentes: lista.length - feitas,
+    porcentagem: lista.length
+      ? Math.round((feitas / lista.length) * 100)
+      : 0,
+  }
+}
+
+const resumoProjetos = computed(() =>
+  projetos.value.map((projeto) => ({
+    ...projeto,
+    name: projeto.nome,
+    description: projeto.descricao || '',
+    color: '#A855F7',
+    participantes: participantesDoProjeto(projeto),
+    ...resumoTarefas(projeto),
+  }))
+)
+
+async function carregarResumoTarefas() {
+  const resultados = await Promise.all(
+    projetos.value.map(async (projeto) => {
+      try {
+        const resposta = await tarefasApi.obterTodos({
+          projeto: projeto.id,
+          page_size: 100,
+        })
+
+        const lista = extrairLista(resposta.data)
+
+        return [
+          String(projeto.id),
+          lista.filter(
+            (tarefa) =>
+              String(idProjetoDaTarefa(tarefa)) === String(projeto.id)
+          ),
+        ]
+      } catch (erro) {
+        console.error('Erro ao carregar tarefas:', erro)
+        return [String(projeto.id), null]
+      }
+    })
+  )
+
+  const dados = { ...tarefasPorProjeto.value }
+
+  for (const [id, lista] of resultados) {
+    if (lista !== null) dados[id] = lista
+  }
+
+  tarefasPorProjeto.value = dados
+}
 
 async function carregarProjetos() {
   loading.value = true
   error.value = ''
 
   try {
-    const { data } = await apiClient.get('/projetos/')
-    projetos.value = extrairLista(data)
-  } catch (err) {
-    error.value = mensagemErro(
-      err,
-      'Não foi possível carregar os projetos.',
+    await obterUsuarioAtual()
+
+    const resposta = await projetosApi.obterTodos()
+    projetos.value = extrairLista(resposta.data)
+
+    const resultados = await Promise.all(
+      projetos.value.map(async (projeto) => {
+        try {
+          const respostaMembros =
+            await projetosApi.listarMembros(projeto.id)
+
+          return [
+            String(projeto.id),
+            mapearParticipantesProjeto(
+              projeto,
+              extrairLista(respostaMembros.data)
+            ),
+          ]
+        } catch (erro) {
+          console.error('Erro ao carregar membros:', erro)
+          return [
+            String(projeto.id),
+            mapearParticipantesProjeto(projeto, []),
+          ]
+        }
+      })
     )
 
-    console.error('Erro ao carregar projetos:', err)
+    participantesPorProjeto.value = Object.fromEntries(resultados)
+    await carregarResumoTarefas()
+  } catch (erro) {
+    error.value = mensagemErro(
+      erro,
+      'Não foi possível carregar os projetos.'
+    )
   } finally {
     loading.value = false
   }
 }
 
-function abrirFormulario(projeto = null) {
-  reiniciarBusca()
+async function criarProjeto() {
+  mensagem.value = ''
+  tipoMensagem.value = ''
 
+  const nome = novoProjeto.value.trim()
+
+  if (!nome) {
+    mensagem.value = 'Digite o nome do projeto.'
+    tipoMensagem.value = 'erro'
+    return
+  }
+
+  if (nome.length > 45) {
+    mensagem.value = 'O nome deve ter no máximo 45 caracteres.'
+    tipoMensagem.value = 'erro'
+    return
+  }
+
+  const existe = projetos.value.some(
+    (projeto) =>
+      String(projeto.nome || '').trim().toLocaleLowerCase('pt-BR') ===
+      nome.toLocaleLowerCase('pt-BR')
+  )
+
+  if (existe) {
+    mensagem.value = 'Esse projeto já existe.'
+    tipoMensagem.value = 'erro'
+    return
+  }
+
+  salvando.value = true
+
+  try {
+    const resposta = await projetosApi.criar({
+      nome,
+      descricao: '',
+    })
+
+    const criado = resposta.data
+    projetos.value.unshift(criado)
+
+    tarefasPorProjeto.value = {
+      ...tarefasPorProjeto.value,
+      [String(criado.id)]: [],
+    }
+
+    await carregarMembrosProjeto(criado)
+
+    novoProjeto.value = ''
+    mensagem.value = 'Projeto criado com sucesso!'
+    tipoMensagem.value = 'sucesso'
+  } catch (erro) {
+    mensagem.value = mensagemErro(
+      erro,
+      'Não foi possível criar o projeto.'
+    )
+    tipoMensagem.value = 'erro'
+  } finally {
+    salvando.value = false
+  }
+}
+
+function abrirFormulario(projeto = null) {
   erroFormulario.value = ''
-  erroMembros.value = ''
-  projetoAtual.value = projeto
-  membros.value = []
-  pendentes.value = []
 
   formulario.value = projeto
     ? {
@@ -521,776 +464,1819 @@ function abrirFormulario(projeto = null) {
       }
 
   formularioAberto.value = true
-
-  if (projeto && ehProprietario(projeto)) {
-    carregarMembros()
-  }
 }
 
 function fecharFormulario() {
-  if (salvando.value || adicionando.value) return
+  if (salvando.value) return
 
   formularioAberto.value = false
+  formulario.value = {
+    id: null,
+    nome: '',
+    descricao: '',
+  }
   erroFormulario.value = ''
-
-  reiniciarBusca()
-  projetoAtual.value = null
-  membros.value = []
-  pendentes.value = []
 }
 
 async function salvarProjeto() {
   erroFormulario.value = ''
 
-  if (!formulario.value.nome.trim()) {
+  const nome = formulario.value.nome.trim()
+
+  if (!nome) {
     erroFormulario.value = 'Informe o nome do projeto.'
+    return
+  }
+
+  if (nome.length > 45) {
+    erroFormulario.value = 'O nome deve ter no máximo 45 caracteres.'
     return
   }
 
   salvando.value = true
 
-  const payload = {
-    nome: formulario.value.nome.trim(),
-    descricao: formulario.value.descricao.trim(),
-  }
-
   try {
-    if (formulario.value.id !== null) {
-      await apiClient.patch(
-        `/projetos/${formulario.value.id}/`,
-        payload,
+    const dados = {
+      nome,
+      descricao: formulario.value.descricao.trim(),
+    }
+
+    if (formulario.value.id) {
+      await projetosApi.atualizarParcialmente(
+        formulario.value.id,
+        dados
       )
+      toast.showToast('Projeto atualizado.')
     } else {
-      const { data: criado } = await apiClient.post('/projetos/', payload)
-      await adicionarPendentes(criado.id)
+      await projetosApi.criar(dados)
+      toast.showToast('Projeto criado.')
     }
 
     formularioAberto.value = false
-    reiniciarBusca()
-    projetoAtual.value = null
-    membros.value = []
-    pendentes.value = []
-
     await carregarProjetos()
-  } catch (err) {
+  } catch (erro) {
     erroFormulario.value = mensagemErro(
-      err,
-      'Não foi possível salvar o projeto.',
+      erro,
+      'Não foi possível salvar o projeto.'
     )
-
-    console.error('Erro ao salvar projeto:', err)
   } finally {
     salvando.value = false
   }
 }
 
 async function excluirProjeto(projeto) {
-  const confirmado = window.confirm(
-    `Deseja realmente excluir o projeto "${projeto.nome}"?`,
-  )
+  if (!ehProprietario(projeto)) return
 
-  if (!confirmado) return
+  const confirmou = window.confirm(
+    `Deseja realmente excluir o projeto "${projeto.nome}"?`
+  )
+  if (!confirmou) return
 
   excluindoId.value = projeto.id
   error.value = ''
 
   try {
-    await apiClient.delete(`/projetos/${projeto.id}/`)
-    await carregarProjetos()
-  } catch (err) {
-    error.value = mensagemErro(
-      err,
-      'Não foi possível excluir o projeto.',
+    await projetosApi.deletar(projeto.id)
+
+    projetos.value = projetos.value.filter(
+      (item) => String(item.id) !== String(projeto.id)
     )
 
-    console.error('Erro ao excluir projeto:', err)
+    const tarefas = { ...tarefasPorProjeto.value }
+    delete tarefas[String(projeto.id)]
+    tarefasPorProjeto.value = tarefas
+
+    const participantes = { ...participantesPorProjeto.value }
+    delete participantes[String(projeto.id)]
+    participantesPorProjeto.value = participantes
+
+    toast.showToast('Projeto excluído.')
+  } catch (erro) {
+    error.value = mensagemErro(
+      erro,
+      'Não foi possível excluir o projeto.'
+    )
   } finally {
     excluindoId.value = null
   }
 }
 
-// ------------------------------------------------------------
-// Compartilhamento: abrir, buscar e listar
-// ------------------------------------------------------------
-
-function reiniciarBusca() {
-  clearTimeout(temporizadorBusca)
-  buscaAtual++
-
-  termoBusca.value = ''
-  resultadosBusca.value = []
-  buscando.value = false
-  buscaConcluida.value = false
-  usuarioSelecionado.value = null
-  papelNovo.value = 'visualizador'
-  erroAdicionar.value = ''
+function abrirDetalhesProjeto(projeto) {
+  router.push({
+    name: 'projeto-detalhes',
+    params: { id: projeto.id },
+  })
 }
 
-async function carregarMembros() {
-  if (!projetoAtual.value) return
+// ---------------------------------------------------------
+// GERENCIAMENTO DE PARTICIPANTES
+// ---------------------------------------------------------
 
-  const projetoId = projetoAtual.value.id
+function limparBusca() {
+  sequenciaBusca++
 
-  carregandoMembros.value = true
-  erroMembros.value = ''
-
-  try {
-    const { data } = await projetosApi.listarMembros(projetoId)
-
-    // Ignora a resposta se o modal foi fechado ou trocado de projeto.
-    if (projetoAtual.value?.id !== projetoId) return
-
-    membros.value = extrairLista(data)
-  } catch (err) {
-    if (projetoAtual.value?.id !== projetoId) return
-
-    erroMembros.value = mensagemErro(
-      err,
-      'Não foi possível carregar os participantes.',
-    )
-
-    console.error('Erro ao carregar participantes:', err)
-  } finally {
-    if (projetoAtual.value?.id === projetoId) {
-      carregandoMembros.value = false
-    }
+  if (temporizadorBusca) {
+    clearTimeout(temporizadorBusca)
   }
+
+  temporizadorBusca = null
+  emailParticipante.value = ''
+  usuarioSelecionado.value = null
+  usuariosSugeridos.value = []
+  buscandoUsuarios.value = false
 }
 
-function agendarBusca(termo) {
-  clearTimeout(temporizadorBusca)
+function abrirParticipantes(projeto) {
+  projetoSelecionado.value =
+    projetoSelecionado.value === String(projeto.id)
+      ? null
+      : String(projeto.id)
 
-  // Invalida qualquer busca que ainda esteja em andamento.
-  buscaAtual++
+  limparBusca()
+  mensagemParticipante.value = ''
+  tipoMensagemParticipante.value = ''
+}
 
-  const consulta = termo.trim()
+// Busca automática com debounce.
+// Cada resultado é associado à pesquisa que o originou.
+function pesquisarUsuarios(projeto) {
+  const chamada = ++sequenciaBusca
 
-  buscaConcluida.value = false
-  erroAdicionar.value = ''
+  if (temporizadorBusca) {
+    clearTimeout(temporizadorBusca)
+  }
 
-  if (consulta.length < 2) {
-    resultadosBusca.value = []
-    buscando.value = false
+  temporizadorBusca = null
+  usuarioSelecionado.value = null
+  usuariosSugeridos.value = []
+  mensagemParticipante.value = ''
+  tipoMensagemParticipante.value = ''
+
+  const termo = emailParticipante.value.trim()
+
+  if (termo.length < 2 || !ehProprietario(projeto)) {
+    buscandoUsuarios.value = false
     return
   }
 
-  buscando.value = true
+  buscandoUsuarios.value = true
 
-  const idDaBusca = buscaAtual
+  temporizadorBusca = setTimeout(async () => {
+    try {
+      const resposta = await usuariosApi.buscar(termo)
 
-  temporizadorBusca = setTimeout(
-    () => executarBusca(consulta, idDaBusca),
-    350,
-  )
-}
+      // Impede que resultados antigos substituam a pesquisa atual.
+      if (chamada !== sequenciaBusca) return
 
-async function executarBusca(consulta, idDaBusca) {
-  try {
-    const { data } = await usuariosApi.buscar(consulta)
+      usuariosSugeridos.value = extrairLista(resposta.data)
+        .filter((usuario) => !usuarioEhParticipante(projeto, usuario))
+    } catch (erro) {
+      if (chamada !== sequenciaBusca) return
 
-    if (idDaBusca !== buscaAtual) return
-
-    const idsComAcesso = new Set(
-      pessoas.value.map((pessoa) => pessoa.usuario.id),
-    )
-
-    resultadosBusca.value = extrairLista(data).filter(
-      (usuario) => !idsComAcesso.has(usuario.id),
-    )
-  } catch (err) {
-    if (idDaBusca !== buscaAtual) return
-
-    resultadosBusca.value = []
-    erroAdicionar.value = mensagemErro(
-      err,
-      'Não foi possível buscar usuários.',
-    )
-
-    console.error('Erro ao buscar usuários:', err)
-  } finally {
-    if (idDaBusca === buscaAtual) {
-      buscando.value = false
-      buscaConcluida.value = true
+      mensagemParticipante.value = mensagemErro(
+        erro,
+        'Não foi possível pesquisar usuários.'
+      )
+      tipoMensagemParticipante.value = 'erro'
+    } finally {
+      if (chamada === sequenciaBusca) {
+        buscandoUsuarios.value = false
+      }
     }
-  }
+  }, 250)
 }
-
-watch(termoBusca, agendarBusca)
 
 function selecionarUsuario(usuario) {
+  sequenciaBusca++
+
+  if (temporizadorBusca) {
+    clearTimeout(temporizadorBusca)
+  }
+
+  temporizadorBusca = null
   usuarioSelecionado.value = usuario
-  papelNovo.value = 'visualizador'
-  erroAdicionar.value = ''
-
-  // Limpa o campo de busca e a lista de resultados.
-  termoBusca.value = ''
+  emailParticipante.value = usuario.email || nomeUsuario(usuario)
+  usuariosSugeridos.value = []
+  buscandoUsuarios.value = false
 }
 
-function limparSelecao() {
-  if (adicionando.value) return
+// Proprietário altera a função diretamente no backend.
+async function alterarPapel(projeto, participante, novoPapel) {
+  if (!ehProprietario(projeto)) return
 
-  usuarioSelecionado.value = null
-  papelNovo.value = 'visualizador'
-  erroAdicionar.value = ''
-}
-
-// ------------------------------------------------------------
-// Pessoas: adicionar, alterar permissão e remover
-//
-// Projeto novo: as alterações ficam em `pendentes` e são enviadas ao salvar.
-// Projeto existente: cada alteração é enviada ao servidor na hora.
-// ------------------------------------------------------------
-
-function sincronizarTotalParticipantes() {
-  if (projetoAtual.value) {
-    projetoAtual.value.total_participantes = membros.value.length
-  }
-}
-
-async function adicionarPendentes(projetoId) {
-  const falhas = []
-
-  for (const pendente of pendentes.value) {
-    try {
-      await projetosApi.adicionarMembro(projetoId, {
-        usuario: pendente.usuario.id,
-        papel: pendente.papel,
-      })
-    } catch (err) {
-      falhas.push(nomeUsuario(pendente.usuario))
-      console.error('Erro ao adicionar participante:', err)
-    }
+  if (
+    participante.criador ||
+    participante.papel === 'proprietario'
+  ) {
+    return
   }
 
-  if (falhas.length) {
-    toast.showToast(
-      `Projeto criado, mas não foi possível adicionar: ${falhas.join(', ')}.`,
-      'error',
+  if (!['editor', 'visualizador'].includes(novoPapel)) return
+  if (participante.papel === novoPapel) return
+
+  alterandoPapelId.value = String(participante.id)
+  mensagemParticipante.value = ''
+  tipoMensagemParticipante.value = ''
+
+  try {
+    await projetosApi.atualizarMembro(
+      projeto.id,
+      participante.id,
+      { papel: novoPapel }
     )
+
+    await carregarMembrosProjeto(projeto)
+
+    mensagemParticipante.value =
+      'Função atualizada com sucesso!'
+    tipoMensagemParticipante.value = 'sucesso'
+  } catch (erro) {
+    mensagemParticipante.value = mensagemErro(
+      erro,
+      'Não foi possível alterar a função.'
+    )
+    tipoMensagemParticipante.value = 'erro'
+
+    try {
+      await carregarMembrosProjeto(projeto)
+    } catch (erroCarregamento) {
+      console.error(erroCarregamento)
+    }
+  } finally {
+    alterandoPapelId.value = null
   }
 }
 
-async function adicionarPessoa() {
-  if (!usuarioSelecionado.value) return
+async function adicionarParticipante(projeto) {
+  mensagemParticipante.value = ''
+  tipoMensagemParticipante.value = ''
+
+  if (!ehProprietario(projeto)) {
+    mensagemParticipante.value =
+      'Somente o proprietário pode adicionar participantes.'
+    tipoMensagemParticipante.value = 'erro'
+    return
+  }
 
   const usuario = usuarioSelecionado.value
 
-  // Projeto ainda não existe: só guarda na lista.
-  if (!formulario.value.id) {
-    pendentes.value.push({
-      id: usuario.id,
-      usuario,
-      papel: papelNovo.value,
+  if (!usuario?.id) {
+    mensagemParticipante.value =
+      'Selecione uma pessoa nas sugestões da pesquisa.'
+    tipoMensagemParticipante.value = 'erro'
+    return
+  }
+
+  if (usuarioEhParticipante(projeto, usuario)) {
+    mensagemParticipante.value =
+      'Esta pessoa já participa do projeto.'
+    tipoMensagemParticipante.value = 'erro'
+    return
+  }
+
+  salvando.value = true
+
+  try {
+    await projetosApi.adicionarMembro(projeto.id, {
+      usuario: Number(usuario.id),
+      papel: 'visualizador',
     })
 
-    usuarioSelecionado.value = null
-    papelNovo.value = 'visualizador'
-    return
-  }
+    await carregarMembrosProjeto(projeto)
+    limparBusca()
 
-  adicionando.value = true
-  erroAdicionar.value = ''
-
-  try {
-    const { data } = await projetosApi.adicionarMembro(
-      formulario.value.id,
-      {
-        usuario: usuario.id,
-        papel: papelNovo.value,
-      },
+    mensagemParticipante.value =
+      'Participante adicionado com sucesso!'
+    tipoMensagemParticipante.value = 'sucesso'
+  } catch (erro) {
+    mensagemParticipante.value = mensagemErro(
+      erro,
+      'Não foi possível adicionar o participante.'
     )
-
-    membros.value.push(data)
-    sincronizarTotalParticipantes()
-
-    toast.showToast(
-      `${nomeUsuario(data.usuario)} agora tem acesso como ${rotuloPapel(data.papel).toLowerCase()}.`,
-    )
-
-    usuarioSelecionado.value = null
-    papelNovo.value = 'visualizador'
-  } catch (err) {
-    erroAdicionar.value = mensagemErro(
-      err,
-      'Não foi possível adicionar a pessoa ao projeto.',
-    )
-
-    console.error('Erro ao adicionar participante:', err)
+    tipoMensagemParticipante.value = 'erro'
   } finally {
-    adicionando.value = false
+    salvando.value = false
   }
 }
 
-async function alterarPapel(pessoa, evento) {
-  const select = evento.target
-  const novoPapel = select.value
-
-  if (novoPapel === pessoa.papel) return
-
-  if (!formulario.value.id) {
-    pessoa.papel = novoPapel
+async function removerParticipante(projeto, participante) {
+  if (
+    !ehProprietario(projeto) ||
+    participante.criador ||
+    participante.papel === 'proprietario'
+  ) {
+    mensagemParticipante.value =
+      'Somente o proprietário pode remover outros participantes.'
+    tipoMensagemParticipante.value = 'erro'
     return
   }
 
-  atualizandoMembroId.value = pessoa.id
+  const nome = nomeExibicaoParticipante(participante)
+  if (!window.confirm(`Deseja remover ${nome} deste projeto?`)) {
+    return
+  }
+
+  mensagemParticipante.value = ''
+  tipoMensagemParticipante.value = ''
 
   try {
-    const { data } = await projetosApi.atualizarMembro(
-      formulario.value.id,
-      pessoa.id,
-      { papel: novoPapel },
+    await projetosApi.removerMembro(
+      projeto.id,
+      participante.id
     )
 
-    pessoa.papel = data.papel
+    await carregarMembrosProjeto(projeto)
 
-    toast.showToast(
-      `${nomeUsuario(pessoa.usuario)} agora é ${rotuloPapel(data.papel).toLowerCase()}.`,
+    mensagemParticipante.value =
+      'Participante removido com sucesso.'
+    tipoMensagemParticipante.value = 'sucesso'
+  } catch (erro) {
+    mensagemParticipante.value = mensagemErro(
+      erro,
+      'Não foi possível remover o participante.'
     )
-  } catch (err) {
-    // Volta o seletor para o papel que continua valendo no servidor.
-    select.value = pessoa.papel
-
-    toast.showToast(
-      mensagemErro(err, 'Não foi possível alterar a permissão.'),
-      'error',
-    )
-
-    console.error('Erro ao alterar permissão:', err)
-  } finally {
-    atualizandoMembroId.value = null
+    tipoMensagemParticipante.value = 'erro'
   }
 }
 
-async function removerPessoa(pessoa) {
-  if (!formulario.value.id) {
-    pendentes.value = pendentes.value.filter((item) => item.id !== pessoa.id)
+// ---------------------------------------------------------
+// MATERIAIS DE APOIO
+// ---------------------------------------------------------
+
+async function abrirMateriaisProjeto(projeto) {
+  projetoMateriaisAtual.value = projeto
+  materiaisProjeto.value = []
+  erroMateriaisProjeto.value = ''
+
+  formMaterialProjeto.value = {
+    titulo: '',
+    url: '',
+    descricao: '',
+  }
+
+  modalMateriaisAberto.value = true
+  await carregarMateriaisProjeto()
+}
+
+async function carregarMateriaisProjeto() {
+  const id = projetoMateriaisAtual.value?.id
+  if (!id) return
+
+  carregandoMateriaisProjeto.value = true
+  erroMateriaisProjeto.value = ''
+
+  try {
+    const resposta = await tarefasApi.listarMateriais({
+      projeto: id,
+    })
+    materiaisProjeto.value = extrairLista(resposta.data)
+  } catch (erro) {
+    erroMateriaisProjeto.value = mensagemErro(
+      erro,
+      'Não foi possível carregar os materiais.'
+    )
+  } finally {
+    carregandoMateriaisProjeto.value = false
+  }
+}
+
+async function adicionarMaterialProjeto() {
+  const projetoId = projetoMateriaisAtual.value?.id
+  if (!projetoId) return
+
+  const titulo = formMaterialProjeto.value.titulo.trim()
+  const link = formMaterialProjeto.value.url.trim()
+
+  if (!titulo || !link) {
+    erroMateriaisProjeto.value =
+      'Informe o título e o link.'
     return
   }
 
-  const confirmado = window.confirm(
-    `Remover ${nomeUsuario(pessoa.usuario)} deste projeto?`,
-  )
-
-  if (!confirmado) return
-
-  removendoMembroId.value = pessoa.id
+  let urlValidada
 
   try {
-    await projetosApi.removerMembro(formulario.value.id, pessoa.id)
+    urlValidada = new URL(link)
+    if (!['http:', 'https:'].includes(urlValidada.protocol)) {
+      throw new Error('Protocolo inválido')
+    }
+  } catch {
+    erroMateriaisProjeto.value =
+      'Informe um link válido iniciado por http:// ou https://.'
+    return
+  }
 
-    membros.value = membros.value.filter((item) => item.id !== pessoa.id)
-    sincronizarTotalParticipantes()
+  salvandoMaterialProjeto.value = true
+  erroMateriaisProjeto.value = ''
 
-    toast.showToast(`${nomeUsuario(pessoa.usuario)} foi removido do projeto.`)
-  } catch (err) {
-    toast.showToast(
-      mensagemErro(err, 'Não foi possível remover a pessoa do projeto.'),
-      'error',
+  try {
+    await tarefasApi.criarMaterial({
+      projeto: projetoId,
+      titulo,
+      url: urlValidada.href,
+      descricao: formMaterialProjeto.value.descricao.trim(),
+    })
+
+    formMaterialProjeto.value = {
+      titulo: '',
+      url: '',
+      descricao: '',
+    }
+
+    await carregarMateriaisProjeto()
+    toast.showToast('Material adicionado.')
+  } catch (erro) {
+    erroMateriaisProjeto.value = mensagemErro(
+      erro,
+      'Não foi possível adicionar o material.'
+    )
+  } finally {
+    salvandoMaterialProjeto.value = false
+  }
+}
+
+async function excluirMaterialProjeto(material) {
+  if (!window.confirm(`Excluir o material "${material.titulo}"?`)) {
+    return
+  }
+
+  try {
+    await tarefasApi.removerMaterial(material.id)
+
+    materiaisProjeto.value = materiaisProjeto.value.filter(
+      (item) => item.id !== material.id
     )
 
-    console.error('Erro ao remover participante:', err)
-  } finally {
-    removendoMembroId.value = null
+    toast.showToast('Material excluído.')
+  } catch (erro) {
+    erroMateriaisProjeto.value = mensagemErro(
+      erro,
+      'Não foi possível excluir o material.'
+    )
   }
+}
+
+function fecharModalMateriais() {
+  modalMateriaisAberto.value = false
+  projetoMateriaisAtual.value = null
+  materiaisProjeto.value = []
+  erroMateriaisProjeto.value = ''
 }
 
 onMounted(carregarProjetos)
 
 onBeforeUnmount(() => {
-  clearTimeout(temporizadorBusca)
+  sequenciaBusca++
+  if (temporizadorBusca) {
+    clearTimeout(temporizadorBusca)
+  }
 })
 </script>
 
+<template>
+  <main class="tf-page projetos-container">
+    <header class="tf-page-header projetos-header">
+      <div>
+        <span class="tf-eyebrow">ORGANIZAÇÃO</span>
+        <h1>Meus projetos</h1>
+        <p>Organize seus projetos, tarefas e participantes.</p>
+      </div>
+
+      <RouterLink to="/" class="tf-button tf-button-secondary">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+        Voltar ao início
+      </RouterLink>
+    </header>
+
+    <form class="tf-create-project" @submit.prevent="criarProjeto">
+      <label for="nomeProjeto">Criar novo projeto</label>
+
+      <div class="tf-form-row">
+        <input
+          id="nomeProjeto"
+          v-model="novoProjeto"
+          type="text"
+          placeholder="Ex.: Trabalho de informática"
+          maxlength="45"
+          required
+        />
+
+        <button
+          type="submit"
+          class="tf-button botao-principal"
+          :disabled="salvando"
+        >
+          <ion-icon name="add-outline"></ion-icon>
+          {{ salvando ? 'Criando...' : 'Criar projeto' }}
+        </button>
+      </div>
+
+      <p
+        v-if="mensagem"
+        class="tf-message"
+        :class="`tf-message-${tipoMensagem}`"
+        aria-live="polite"
+      >
+        {{ mensagem }}
+      </p>
+
+      <p v-if="error" class="tf-message tf-message-erro" role="alert">
+        {{ error }}
+        <button
+          type="button"
+          class="tf-text-link"
+          @click="carregarProjetos"
+        >
+          Tentar novamente
+        </button>
+      </p>
+    </form>
+
+    <section class="tf-project-grid projetos-grid">
+      <article
+        v-for="projeto in resumoProjetos"
+        :key="projeto.id"
+        class="tf-project-card projeto-card"
+      >
+        <div class="tf-project-heading">
+          <span
+            class="tf-project-dot"
+            :style="{ backgroundColor: projeto.color }"
+          ></span>
+          <h2>{{ projeto.name }}</h2>
+        </div>
+
+        <p class="tf-project-description">
+          {{ projeto.description || 'Sem descrição.' }}
+        </p>
+
+        <div
+          v-if="proprietarioDoProjeto(projeto)"
+          class="tf-project-owner"
+        >
+          Proprietário:
+          {{ nomeUsuario(proprietarioDoProjeto(projeto)) }}
+        </div>
+
+        <div
+          v-if="papelDoUsuarioNoProjeto(projeto)"
+          class="tf-project-role"
+        >
+          {{ rotuloPapel(papelDoUsuarioNoProjeto(projeto)) }}
+        </div>
+
+        <div class="tf-project-description tf-task-summary">
+          {{ projeto.total }}
+          {{ projeto.total === 1 ? 'tarefa' : 'tarefas' }}
+          cadastradas
+        </div>
+
+        <div class="tf-progress-info">
+          <span>Progresso</span>
+          <strong>{{ projeto.porcentagem }}%</strong>
+        </div>
+
+        <div
+          class="tf-progress-track"
+          role="progressbar"
+          :aria-valuenow="projeto.porcentagem"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`Progresso de ${projeto.name}`"
+        >
+          <div
+            class="tf-progress-fill"
+            :style="{ width: `${projeto.porcentagem}%` }"
+          ></div>
+        </div>
+
+        <div class="tf-project-stats">
+          <span>
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+            {{ projeto.feitas }} concluídas
+          </span>
+
+          <span>
+            <ion-icon name="time-outline"></ion-icon>
+            {{ projeto.pendentes }} pendentes
+          </span>
+
+          <span>
+            <ion-icon name="people-outline"></ion-icon>
+            {{ textoParticipantes(projeto) }}
+          </span>
+        </div>
+
+        <div class="tf-project-actions">
+          <button
+            type="button"
+            class="tf-project-link"
+            @click="abrirDetalhesProjeto(projeto)"
+          >
+            <ion-icon name="list-outline"></ion-icon>
+            <span>Ver tarefas</span>
+            <ion-icon name="arrow-forward-outline"></ion-icon>
+          </button>
+
+          <button
+            type="button"
+            class="tf-project-link"
+            @click="abrirMateriaisProjeto(projeto)"
+          >
+            <ion-icon name="document-attach-outline"></ion-icon>
+            <span>Materiais de apoio</span>
+            <ion-icon name="arrow-forward-outline"></ion-icon>
+          </button>
+
+          <button
+            type="button"
+            class="tf-project-link tf-participants-link"
+            :aria-expanded="projetoSelecionado === String(projeto.id)"
+            @click="abrirParticipantes(projeto)"
+          >
+            <ion-icon name="people-outline"></ion-icon>
+            <span>
+              {{
+                projetoSelecionado === String(projeto.id)
+                  ? 'Fechar participantes'
+                  : 'Gerenciar participantes'
+              }}
+            </span>
+            <ion-icon
+              :name="
+                projetoSelecionado === String(projeto.id)
+                  ? 'chevron-up-outline'
+                  : 'chevron-down-outline'
+              "
+            ></ion-icon>
+          </button>
+
+          <button
+            v-if="podeEditar(projeto)"
+            type="button"
+            class="tf-project-link"
+            @click="abrirFormulario(projeto)"
+          >
+            <ion-icon name="create-outline"></ion-icon>
+            <span>Editar projeto</span>
+          </button>
+
+          <button
+            v-if="ehProprietario(projeto)"
+            type="button"
+            class="tf-project-link tf-delete-project"
+            :disabled="excluindoId === projeto.id"
+            @click="excluirProjeto(projeto)"
+          >
+            <ion-icon name="trash-outline"></ion-icon>
+            <span>
+              {{
+                excluindoId === projeto.id
+                  ? 'Excluindo...'
+                  : 'Excluir projeto'
+              }}
+            </span>
+          </button>
+        </div>
+
+        <!-- Gerenciamento dos participantes -->
+        <section
+          v-if="projetoSelecionado === String(projeto.id)"
+          class="tf-participants-panel"
+        >
+          <h3>
+            <ion-icon name="person-add-outline"></ion-icon>
+            Adicionar pessoa
+          </h3>
+
+          <form
+            v-if="ehProprietario(projeto)"
+            @submit.prevent="adicionarParticipante(projeto)"
+          >
+            <div class="tf-participant-field tf-autocomplete">
+              <label :for="`email-${projeto.id}`">
+                Nome ou e-mail do participante
+              </label>
+
+              <input
+                :id="`email-${projeto.id}`"
+                v-model="emailParticipante"
+                type="text"
+                placeholder="Comece a digitar um nome ou e-mail..."
+                maxlength="254"
+                autocomplete="off"
+                aria-autocomplete="list"
+                :aria-expanded="usuariosSugeridos.length > 0"
+                @input="pesquisarUsuarios(projeto)"
+              />
+
+              <p
+                v-if="buscandoUsuarios"
+                class="tf-search-status"
+                aria-live="polite"
+              >
+                Pesquisando usuários...
+              </p>
+
+              <!-- Sugestões aparecem enquanto se digita -->
+              <div
+                v-else-if="usuariosSugeridos.length"
+                class="tf-search-results"
+                role="listbox"
+                aria-label="Usuários encontrados"
+              >
+                <button
+                  v-for="usuario in usuariosSugeridos"
+                  :key="usuario.id"
+                  type="button"
+                  role="option"
+                  class="tf-search-option"
+                  :aria-selected="false"
+                  @click="selecionarUsuario(usuario)"
+                >
+                  <span class="tf-participant-avatar">
+                    {{
+                      nomeUsuario(usuario)
+                        .charAt(0)
+                        .toLocaleUpperCase('pt-BR')
+                    }}
+                  </span>
+
+                  <span class="tf-search-user">
+                    <strong>{{ nomeUsuario(usuario) }}</strong>
+                    <small>{{ usuario.email }}</small>
+                  </span>
+
+                  <ion-icon name="add-circle-outline"></ion-icon>
+                </button>
+              </div>
+
+              <p
+                v-else-if="
+                  emailParticipante.trim().length >= 2 &&
+                  !usuarioSelecionado &&
+                  !buscandoUsuarios &&
+                  !mensagemParticipante
+                "
+                class="tf-search-status"
+              >
+                Nenhum usuário disponível com esse nome ou e-mail.
+              </p>
+
+              <div
+                v-if="usuarioSelecionado"
+                class="tf-selected-user"
+              >
+                <ion-icon name="checkmark-circle-outline"></ion-icon>
+
+                <span>
+                  Selecionado:
+                  <strong>
+                    {{ nomeUsuario(usuarioSelecionado) }}
+                  </strong>
+                </span>
+
+                <button
+                  type="button"
+                  aria-label="Limpar seleção"
+                  title="Limpar seleção"
+                  @click="limparBusca"
+                >
+                  <ion-icon name="close-outline"></ion-icon>
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="tf-button tf-add-participant botao-principal"
+              :disabled="salvando || !usuarioSelecionado"
+            >
+              <ion-icon name="person-add-outline"></ion-icon>
+              {{
+                salvando
+                  ? 'Adicionando...'
+                  : 'Adicionar participante'
+              }}
+            </button>
+          </form>
+
+          <p v-else class="tf-project-description">
+            Somente o proprietário pode adicionar, remover
+            ou alterar participantes.
+          </p>
+
+          <p
+            v-if="mensagemParticipante"
+            class="tf-participant-message"
+            :class="`tf-message-${tipoMensagemParticipante}`"
+            aria-live="polite"
+          >
+            {{ mensagemParticipante }}
+          </p>
+
+          <div class="tf-participant-divider"></div>
+
+          <h3>
+            Pessoas no projeto
+            <span class="tf-participant-count">
+              {{ projeto.participantes.length }}
+            </span>
+          </h3>
+
+          <div
+            v-if="projeto.participantes.length"
+            class="tf-participant-list"
+          >
+            <div
+              v-for="pessoa in projeto.participantes"
+              :key="pessoa.id"
+              class="tf-participant-item"
+            >
+              <div class="tf-participant-avatar">
+                {{
+                  nomeExibicaoParticipante(pessoa)
+                    .charAt(0)
+                    .toLocaleUpperCase('pt-BR')
+                }}
+              </div>
+
+              <div class="tf-participant-info">
+                <strong>
+                  {{ nomeExibicaoParticipante(pessoa) }}
+                </strong>
+                <span>{{ pessoa.email }}</span>
+
+                <small
+                  v-if="
+                    pessoa.criador ||
+                    pessoa.papel === 'proprietario'
+                  "
+                >
+                  Proprietário
+                </small>
+              </div>
+
+              <!-- Alteração de função -->
+              <div class="tf-participant-role">
+                <span
+                  v-if="
+                    pessoa.criador ||
+                    pessoa.papel === 'proprietario'
+                  "
+                  class="tf-owner-label"
+                >
+                  Proprietário
+                </span>
+
+                <select
+                  v-else
+                  :value="pessoa.papel"
+                  :disabled="
+                    !ehProprietario(projeto) ||
+                    alterandoPapelId === String(pessoa.id)
+                  "
+                  :aria-label="
+                    `Função de ${nomeExibicaoParticipante(pessoa)}`
+                  "
+                  @change="
+                    alterarPapel(
+                      projeto,
+                      pessoa,
+                      $event.target.value
+                    )
+                  "
+                >
+                  <option value="visualizador">
+                    Visualizador
+                  </option>
+                  <option value="editor">
+                    Editor
+                  </option>
+                </select>
+              </div>
+
+              <button
+                v-if="
+                  ehProprietario(projeto) &&
+                  !pessoa.criador &&
+                  pessoa.papel !== 'proprietario'
+                "
+                type="button"
+                class="tf-remove-participant"
+                :aria-label="
+                  `Remover ${nomeExibicaoParticipante(pessoa)}`
+                "
+                title="Remover participante"
+                @click="removerParticipante(projeto, pessoa)"
+              >
+                <ion-icon name="trash-outline"></ion-icon>
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="tf-participants-empty">
+            <ion-icon name="people-outline"></ion-icon>
+            <p>Nenhuma pessoa adicionada ainda.</p>
+          </div>
+        </section>
+      </article>
+
+      <div
+        v-if="!loading && resumoProjetos.length === 0"
+        class="tf-empty"
+      >
+        <ion-icon name="folder-open-outline"></ion-icon>
+        <h2>Nenhum projeto cadastrado</h2>
+        <p>Crie seu primeiro projeto usando o formulário acima.</p>
+      </div>
+
+      <div v-if="loading" class="tf-empty">
+        <p>Carregando projetos...</p>
+      </div>
+    </section>
+
+    <!-- Modal de edição -->
+    <div
+      v-if="formularioAberto"
+      class="tf-modal-backdrop"
+      @click.self="fecharFormulario"
+    >
+      <section
+        class="tf-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-formulario"
+      >
+        <header class="tf-modal-header">
+          <div>
+            <span class="tf-eyebrow">CONFIGURAÇÕES</span>
+            <h2 id="titulo-formulario">Editar projeto</h2>
+          </div>
+
+          <button
+            type="button"
+            class="tf-modal-close"
+            aria-label="Fechar"
+            @click="fecharFormulario"
+          >
+            ×
+          </button>
+        </header>
+
+        <form @submit.prevent="salvarProjeto">
+          <div class="tf-participant-field">
+            <label for="editar-nome-projeto">
+              Nome do projeto
+            </label>
+            <input
+              id="editar-nome-projeto"
+              v-model="formulario.nome"
+              type="text"
+              maxlength="45"
+              required
+            />
+          </div>
+
+          <div class="tf-participant-field">
+            <label for="editar-descricao-projeto">
+              Descrição
+            </label>
+            <textarea
+              id="editar-descricao-projeto"
+              v-model="formulario.descricao"
+              maxlength="255"
+              rows="4"
+              placeholder="Descreva o objetivo do projeto"
+            ></textarea>
+          </div>
+
+          <p
+            v-if="erroFormulario"
+            class="tf-message tf-message-erro"
+            role="alert"
+          >
+            {{ erroFormulario }}
+          </p>
+
+          <div class="tf-modal-actions">
+            <button
+              type="button"
+              class="tf-button tf-button-secondary"
+              :disabled="salvando"
+              @click="fecharFormulario"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              class="tf-button botao-principal"
+              :disabled="salvando"
+            >
+              {{ salvando ? 'Salvando...' : 'Salvar projeto' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- Modal de materiais -->
+    <div
+      v-if="modalMateriaisAberto"
+      class="tf-modal-backdrop"
+      @click.self="fecharModalMateriais"
+    >
+      <section
+        class="tf-modal tf-modal-wide"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-materiais"
+      >
+        <header class="tf-modal-header">
+          <div>
+            <span class="tf-eyebrow">
+              RECURSOS DO PROJETO
+            </span>
+            <h2 id="titulo-materiais">Materiais de apoio</h2>
+            <p>{{ projetoMateriaisAtual?.nome }}</p>
+          </div>
+
+          <button
+            type="button"
+            class="tf-modal-close"
+            aria-label="Fechar"
+            @click="fecharModalMateriais"
+          >
+            ×
+          </button>
+        </header>
+
+        <p
+          v-if="erroMateriaisProjeto"
+          class="tf-message tf-message-erro"
+          role="alert"
+        >
+          {{ erroMateriaisProjeto }}
+        </p>
+
+        <p
+          v-if="carregandoMateriaisProjeto"
+          class="tf-project-description"
+        >
+          Carregando materiais...
+        </p>
+
+        <form
+          v-if="podeEditar(projetoMateriaisAtual || {})"
+          class="tf-material-form"
+          @submit.prevent="adicionarMaterialProjeto"
+        >
+          <h3>Adicionar material</h3>
+
+          <div class="tf-participant-field">
+            <label for="material-titulo">Título</label>
+            <input
+              id="material-titulo"
+              v-model="formMaterialProjeto.titulo"
+              maxlength="100"
+              required
+              placeholder="Documento de requisitos"
+            />
+          </div>
+
+          <div class="tf-participant-field">
+            <label for="material-url">Link</label>
+            <input
+              id="material-url"
+              v-model="formMaterialProjeto.url"
+              type="url"
+              maxlength="500"
+              required
+              placeholder="https://..."
+            />
+          </div>
+
+          <div class="tf-participant-field">
+            <label for="material-descricao">Descrição</label>
+            <textarea
+              id="material-descricao"
+              v-model="formMaterialProjeto.descricao"
+              maxlength="255"
+              rows="2"
+              placeholder="Descrição opcional"
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            class="tf-button tf-add-participant"
+            :disabled="salvandoMaterialProjeto"
+          >
+            {{
+              salvandoMaterialProjeto
+                ? 'Salvando...'
+                : 'Adicionar material'
+            }}
+          </button>
+        </form>
+
+        <div
+          v-if="materiaisProjeto.length"
+          class="tf-material-list"
+        >
+          <article
+            v-for="material in materiaisProjeto"
+            :key="material.id"
+            class="tf-material-item"
+          >
+            <div class="tf-material-info">
+              <a
+                :href="material.url"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ material.titulo }}
+              </a>
+
+              <p v-if="material.descricao">
+                {{ material.descricao }}
+              </p>
+
+              <small>{{ material.url }}</small>
+            </div>
+
+            <button
+              v-if="podeEditar(projetoMateriaisAtual || {})"
+              type="button"
+              class="tf-remove-participant"
+              :aria-label="`Excluir ${material.titulo}`"
+              title="Excluir material"
+              @click="excluirMaterialProjeto(material)"
+            >
+              <ion-icon name="trash-outline"></ion-icon>
+            </button>
+          </article>
+        </div>
+
+        <p
+          v-else-if="!carregandoMateriaisProjeto"
+          class="tf-participants-empty"
+        >
+          Nenhum material cadastrado.
+        </p>
+      </section>
+    </div>
+  </main>
+</template>
+
 <style scoped>
-.projetos-container {
-  width: min(1100px, 100%);
-  margin: 0 auto;
-  padding: 32px 24px;
-  color: var(--cor-texto, #202124);
+.tf-page {
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
 }
 
-.cabecalho {
+.tf-page-header h1,
+.tf-project-card h2 {
+  color: var(--cor-texto);
+}
+
+.tf-page-header p,
+.tf-project-description {
+  color: var(--cor-texto-suave);
+}
+
+.tf-create-project,
+.tf-project-card {
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+}
+
+.tf-create-project {
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.tf-create-project label,
+.tf-participant-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--cor-texto);
+  font-weight: 600;
+}
+
+.tf-form-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 28px;
+  gap: 0.75rem;
 }
 
-.cabecalho h1 {
-  margin: 0 0 8px;
-  font-size: 2rem;
+.tf-form-row input,
+.tf-participant-field input,
+.tf-participant-field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  font: inherit;
 }
 
-.cabecalho p {
-  margin: 0;
-  color: var(--cor-texto-suave, #666);
+.tf-form-row input:focus,
+.tf-participant-field input:focus,
+.tf-participant-field textarea:focus {
+  outline: 1px solid #a855f7;
+  border-color: #a855f7;
 }
 
-.lista-projetos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
+.tf-create-project .tf-button,
+.tf-add-participant {
+  background: #a855f7;
+  color: #fff;
+  border: 1px solid #a855f7;
+  border-radius: var(--raio);
 }
 
-.projeto-card {
+.tf-create-project .tf-button:hover,
+.tf-add-participant:hover {
+  background: #9333ea;
+  border-color: #9333ea;
+}
+
+.tf-project-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-  min-height: 180px;
-  padding: 22px;
-  border: 1px solid var(--cor-borda, #ddd);
-  border-radius: 12px;
-  background: var(--cor-superficie, #fff);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+  min-width: 0;
+  padding: 1.25rem;
+  transition: border-color 0.2s ease;
 }
 
-.projeto-titulo {
+.tf-project-card:hover {
+  border-color: #a855f7;
+}
+
+.tf-project-heading {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
-  margin-bottom: 12px;
+  gap: 0.7rem;
 }
 
-.projeto-conteudo h2 {
-  margin: 0;
+.tf-project-heading h2 {
+  overflow-wrap: anywhere;
+  font-size: 1.15rem;
+}
+
+.tf-project-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #a855f7;
+}
+
+.tf-project-owner,
+.tf-project-role {
+  margin-top: 0.55rem;
+  color: var(--cor-texto-suave);
+  font-size: 0.82rem;
   overflow-wrap: anywhere;
 }
 
-.projeto-conteudo p {
-  color: var(--cor-texto-suave, #666);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+.tf-project-role {
+  color: #a855f7;
+  font-weight: 600;
 }
 
-.projeto-conteudo small {
-  display: block;
-  margin-top: 6px;
-  color: var(--cor-texto-suave, #777);
+.tf-task-summary {
+  margin-top: 0.75rem;
 }
 
-.acoes {
+.tf-progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin: 1rem 0 0.5rem;
+  color: var(--cor-texto-suave);
+}
+
+.tf-progress-info strong {
+  color: #a855f7;
+}
+
+.tf-progress-track {
+  height: 8px;
+  overflow: hidden;
+  background: var(--cor-superficie-hover);
+  border-radius: 999px;
+}
+
+.tf-progress-fill {
+  height: 100%;
+  background: #a855f7 !important;
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
+.tf-project-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 0.7rem 1rem;
+  margin-top: 1rem;
+  color: var(--cor-texto-suave);
+  font-size: 0.85rem;
 }
 
-.btn {
-  padding: 10px 15px;
-  border: 0;
-  border-radius: 7px;
-  font: inherit;
-  font-weight: 600;
+.tf-project-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tf-project-stats ion-icon {
+  color: #a855f7;
+}
+
+.tf-project-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.tf-project-actions .tf-project-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  text-decoration: none;
+  text-align: left;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  font: inherit;
 }
 
-.btn:disabled {
+.tf-project-link span {
+  flex: 1;
+}
+
+.tf-project-link:hover {
+  background: var(--cor-superficie-hover);
+  border-color: #a855f7;
+}
+
+.tf-project-actions .tf-participants-link {
+  color: #a855f7;
+}
+
+.tf-project-actions .tf-delete-project {
+  color: #ef4444;
+}
+
+.tf-project-link:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.btn-principal {
-  color: white;
-  background: var(--cor-primaria, #315efb);
+.tf-participants-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
 }
 
-.btn-secundario {
-  border: 1px solid var(--cor-borda, #ddd);
-  color: var(--cor-texto, #333);
-  background: var(--cor-superficie-hover, #e9e9e9);
+.tf-participants-panel h3,
+.tf-material-form h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  color: var(--cor-texto);
+  font-size: 1rem;
 }
 
-.btn-perigo {
-  color: white;
-  background: #c62828;
+.tf-participants-panel h3 ion-icon {
+  color: #a855f7;
 }
 
-.btn-pequeno {
-  padding: 7px 11px;
-  font-size: 0.875rem;
+.tf-participant-field {
+  margin-bottom: 0.9rem;
 }
 
-.estado {
-  padding: 40px 20px;
-  text-align: center;
+.tf-add-participant {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  cursor: pointer;
 }
 
-.vazio {
-  border: 1px dashed var(--cor-borda, #ccc);
-  border-radius: 12px;
+.tf-participant-divider {
+  height: 1px;
+  margin: 1.25rem 0;
+  background: var(--cor-borda);
 }
 
-.mensagem {
-  margin: 16px 0;
-  padding: 12px 14px;
-  border-radius: 8px;
-}
-
-.erro {
-  color: #a51d1d;
-  background: #ffeded;
-}
-
-/* ---------- Selos de papel ---------- */
-
-.selo {
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-  color: var(--cor-texto-suave, #666);
-  background: var(--cor-superficie-hover, #eee);
-  border: 1px solid var(--cor-borda, #ddd);
-}
-
-.selo-proprietario {
-  color: var(--cor-primaria, #315efb);
-  background: color-mix(in srgb, var(--cor-primaria, #315efb) 14%, transparent);
-  border-color: color-mix(in srgb, var(--cor-primaria, #315efb) 40%, transparent);
-}
-
-.selo-editor {
-  color: var(--cor-texto, #202124);
-}
-
-/* ---------- Modais ---------- */
-
-.modal-fundo {
-  position: fixed;
-  z-index: 1000;
-  inset: 0;
+.tf-participant-count {
   display: grid;
   place-items: center;
-  padding: 20px;
-  background: rgb(0 0 0 / 50%);
+  min-width: 24px;
+  height: 24px;
+  padding: 0 0.4rem;
+  background: #a855f7;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.75rem;
 }
 
-.modal {
-  width: min(500px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 26px;
-  border-radius: 12px;
-  background: var(--cor-superficie, #fff);
-  color: var(--cor-texto, #202124);
+.tf-participant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.modal-largo {
-  width: min(620px, 100%);
+.tf-participant-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-.modal h2 {
-  margin-top: 0;
-  margin-bottom: 24px;
+.tf-participant-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #a855f7;
+  color: #fff;
+  font-weight: 700;
+}
+
+.tf-participant-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.tf-participant-info strong {
+  color: var(--cor-texto);
+  font-size: 0.85rem;
+}
+
+.tf-participant-info span {
+  color: var(--cor-texto-suave);
+  font-size: 0.75rem;
   overflow-wrap: anywhere;
 }
 
-.modal form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.modal label {
-  margin-top: 8px;
+.tf-participant-info small {
+  color: #a855f7;
+  font-size: 0.72rem;
   font-weight: 600;
 }
 
-.modal input,
-.modal textarea,
-.modal select {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 11px 12px;
-  border: 1px solid var(--cor-borda, #ccc);
-  border-radius: 7px;
-  background: var(--cor-superficie, #fff);
-  color: inherit;
-  font: inherit;
+.tf-remove-participant {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  cursor: pointer;
 }
 
-.modal textarea {
-  resize: vertical;
+.tf-remove-participant:hover {
+  background: var(--cor-superficie-hover);
+  border-color: #ef4444;
 }
 
-.modal-acoes {
-  justify-content: flex-end;
-  margin-top: 16px;
+.tf-participants-empty,
+.tf-empty {
+  padding: 1.5rem 0.5rem;
+  color: var(--cor-texto-suave);
+  text-align: center;
 }
 
-/* ---------- Pessoas e permissões ---------- */
-
-.bloco-pessoas {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--cor-borda, #ddd);
+.tf-participants-empty ion-icon,
+.tf-empty > ion-icon {
+  font-size: 2rem;
+  color: #a855f7;
 }
 
-.subtitulo {
-  margin: 12px 0 4px;
-  font-size: 1.05rem;
+.tf-message-erro {
+  color: #ef4444;
+  white-space: pre-line;
 }
 
-.dica {
-  margin: 4px 0;
-  color: var(--cor-texto-suave, #666);
-  font-size: 0.9rem;
+.tf-message-sucesso {
+  color: #16a34a;
 }
 
-.lista-resultados,
-.lista-membros {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* Pesquisa dinâmica */
+
+.tf-autocomplete {
+  position: relative;
 }
 
-.lista-resultados {
-  max-height: 220px;
+.tf-search-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 40;
+  max-height: 260px;
   overflow-y: auto;
+  background: var(--cor-superficie);
+  border: 1px solid #a855f7;
+  border-radius: var(--raio);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
 }
 
-.item-usuario {
+.tf-search-option {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.65rem;
   width: 100%;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--cor-borda, #ddd);
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
+  padding: 0.65rem;
+  border: 0;
+  border-bottom: 1px solid var(--cor-borda);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
   text-align: left;
   cursor: pointer;
 }
 
-.item-usuario:hover {
-  background: var(--cor-superficie-hover, #f3f3f3);
+.tf-search-option:hover,
+.tf-search-option:focus {
+  background: var(--cor-superficie-hover);
 }
 
-.item-usuario.estatico {
-  border-color: transparent;
-  padding-left: 0;
-  cursor: default;
-}
-
-.item-usuario.estatico:hover {
-  background: transparent;
-}
-
-.avatar {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  color: white;
-  background: var(--cor-primaria, #315efb);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.usuario-dados {
+.tf-search-user {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
 }
 
-.usuario-dados strong,
-.usuario-dados small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.tf-search-user strong {
+  overflow-wrap: anywhere;
 }
 
-.usuario-dados small {
-  color: var(--cor-texto-suave, #777);
+.tf-search-user small {
+  color: var(--cor-texto-suave);
+  overflow-wrap: anywhere;
 }
 
-.selecionado {
+.tf-search-status {
+  color: var(--cor-texto-suave);
+  font-size: 0.85rem;
+}
+
+.tf-selected-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid #a855f7;
+  border-radius: var(--raio);
+  color: var(--cor-texto);
+}
+
+.tf-selected-user > ion-icon {
+  color: #a855f7;
+}
+
+.tf-selected-user span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tf-selected-user button {
+  background: none;
+  color: var(--cor-texto);
+  border: 0;
+  cursor: pointer;
+}
+
+/* Alteração da função */
+
+.tf-participant-role select {
+  max-width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tf-participant-role select:focus {
+  border-color: #a855f7;
+  outline: 1px solid #a855f7;
+}
+
+.tf-participant-role select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tf-owner-label {
+  color: #a855f7;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tf-add-participant:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modais */
+
+.tf-modal-backdrop {
+  position: fixed;
+  z-index: 1500;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow-y: auto;
+  background: rgb(0 0 0 / 70%);
+}
+
+.tf-modal {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 25%);
+}
+
+.tf-modal-wide {
+  width: min(680px, 100%);
+}
+
+.tf-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.tf-modal-header h2 {
+  margin: 0.45rem 0;
+  font-size: 1.4rem;
+}
+
+.tf-modal-header p {
+  margin: 0;
+  color: var(--cor-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+.tf-modal-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  color: var(--cor-texto);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.tf-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+.tf-modal form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--cor-borda, #ddd);
-  border-radius: 10px;
+  gap: 0.5rem;
 }
 
-.selecionado .item-usuario.estatico {
-  padding: 0;
+.tf-material-form {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
 }
 
-.selecionado .rotulo-papel {
-  margin-top: 4px;
-}
-
-.membro {
+.tf-material-list {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.tf-material-item {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--cor-borda, #eee);
+  gap: 0.75rem;
+  padding: 0.9rem;
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
 }
 
-.membro:last-child {
-  border-bottom: 0;
-}
-
-.membro .item-usuario {
-  width: auto;
+.tf-material-info {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.membro-acoes {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+.tf-material-info a {
+  color: #a855f7;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
-.membro-acoes select {
-  width: auto;
-  padding: 7px 10px;
+.tf-material-info p {
+  margin: 0.4rem 0;
+  color: var(--cor-texto-suave);
 }
 
-@media (max-width: 600px) {
-  .projetos-container {
-    padding: 22px 16px;
+.tf-material-info small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--cor-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .tf-page {
+    padding: 1rem;
   }
 
-  .cabecalho {
-    align-items: flex-start;
+  .tf-form-row {
     flex-direction: column;
   }
 
-  .cabecalho h1 {
-    font-size: 1.6rem;
+  .tf-form-row .tf-button {
+    justify-content: center;
   }
 
-  .membro {
-    flex-direction: column;
-    align-items: stretch;
+  .tf-project-card {
+    padding: 1rem;
   }
 
-  .membro-acoes {
-    justify-content: space-between;
+  .tf-participants-panel {
+    padding: 0.8rem;
   }
 
-  .membro-acoes select {
-    flex: 1;
+  .tf-modal {
+    padding: 1rem;
+  }
+
+  .tf-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .tf-modal-actions .tf-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 580px) {
+  .tf-participant-item {
+    flex-wrap: wrap;
+  }
+
+  .tf-participant-role {
+    margin-left: 50px;
   }
 }
 </style>
