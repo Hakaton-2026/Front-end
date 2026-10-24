@@ -12,6 +12,7 @@ const rotasPublicas = [
 ]
 
 const rotasSemLayout = [
+  'notas',
   'login',
   'cadastro',
   'verificar',
@@ -65,12 +66,46 @@ const router = createRouter({
       meta: { titulo: 'Verificar e-mail' },
     },
     {
-      path: '/tarefas',
-      name: 'tarefas',
-      component: () => import('@/views/TarefasView.vue'),
-      meta: { titulo: 'Tarefas' },
+ path: '/Projetos',
+      name: 'projetos',
+      component: () => import('@/views/ProjetosView.vue'),
+      meta: { titulo: 'Projetos' },
     },
-    
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/',
+    },
+
+    {
+ path: '/Kanban',
+      name: 'Kanban',
+      component: () => import('@/views/KanbanView.vue'),
+      meta: { titulo: 'Meu Kanban' },
+    },
+
+    {
+ path: '/notas',
+      name: 'notas',
+      component: () => import('@/views/NotasView.vue'),
+      meta: { titulo: 'Minhas Notas' },
+    },
+
+
+    {
+ path: '/Documentos',
+      name: 'documentos',
+      component: () => import('@/views/DocumentoView.vue'),
+      meta: { titulo: 'Meus Documentos' },
+    },
+
+    {
+ path: '/Notificacao',
+      name: 'Notificacao',
+      component: () => import('@/views/NotificacaoView.vue'),
+      meta: { titulo: 'Meus Notificação' },
+    },
+
+
     {
       path: '/:pathMatch(.*)*',
       redirect: '/',
