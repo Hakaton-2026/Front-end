@@ -135,6 +135,39 @@ function handleQrCode() {
 </template>
 
 <style scoped>
+
+.opcao-acessibilidade {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  text-align: left;
+}
+
+.opcao-acessibilidade > ion-icon {
+  flex-shrink: 0;
+  font-size: 1.4rem;
+  color: var(--cor-primaria);
+}
+
+.texto-acessibilidade {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.texto-acessibilidade strong {
+  color: var(--cor-texto);
+}
+
+.texto-acessibilidade small {
+  color: var(--cor-texto-suave);
+  font-size: 0.85rem;
+}
+
 .opcao-item {
   width: 100%;
   display: flex;

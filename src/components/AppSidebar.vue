@@ -1,4 +1,3 @@
-
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
@@ -7,8 +6,8 @@ import { useAuthStore } from '@/stores/auth'
 const props = defineProps({
   aberto: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['fechar'])
@@ -43,16 +42,17 @@ async function sair() {
 </script>
 
 <template>
-    <aside :class="['sidebar', { open: props.aberto }]">
-<img
-  src="/images/nexos-br.png"
-  class="logo-sidebar"
-  alt="Logo Nexos"
->    <!-- Navegação -->
+  <aside :class="['sidebar', { open: props.aberto }]">
+    <img
+      src="/images/nexos-br.png"
+      class="logo-sidebar"
+      alt="Logo Nexos"
+    >
+
     <ul class="sidebar-menu">
       <li>
         <RouterLink
-          to="/projetoandamento"
+          to="/"
           class="sidebar-link"
           @click="fecharMenu"
         >
@@ -74,12 +74,12 @@ async function sair() {
 
       <li>
         <RouterLink
-          to="/Kanban"
+          to="/tarefas"
           class="sidebar-link"
           @click="fecharMenu"
         >
           <ion-icon name="chatbubbles-outline" />
-          <span>Meu Kanban</span>
+          <span>Tarefas</span>
         </RouterLink>
       </li>
 
@@ -117,9 +117,7 @@ async function sair() {
       </li>
     </ul>
 
-    <!-- Perfil do usuário no final da sidebar -->
     <div class="perfil-container">
-      <!-- Painel que abre para cima -->
       <Transition name="perfil">
         <div
           v-if="perfilAberto"
@@ -144,13 +142,8 @@ async function sair() {
             </div>
 
             <div class="conta-dados">
-              <strong>
-                {{ usuario?.name || 'Seu nome' }}
-              </strong>
-
-              <span>
-                {{ usuario?.email || 'Seu e-mail' }}
-              </span>
+              <strong>{{ usuario?.name || 'Seu nome' }}</strong>
+              <span>{{ usuario?.email || 'Seu e-mail' }}</span>
             </div>
 
             <ion-icon
@@ -181,7 +174,6 @@ async function sair() {
         </div>
       </Transition>
 
-      <!-- Botão com foto, nome, e-mail e seta -->
       <button
         type="button"
         class="perfil-botao"
@@ -203,13 +195,8 @@ async function sair() {
         </div>
 
         <div class="perfil-dados">
-          <strong>
-            {{ usuario?.name || 'Seu nome' }}
-          </strong>
-
-          <span>
-            {{ usuario?.email || 'Seu e-mail' }}
-          </span>
+          <strong>{{ usuario?.name || 'Seu nome' }}</strong>
+          <span>{{ usuario?.email || 'Seu e-mail' }}</span>
         </div>
 
         <ion-icon
@@ -222,7 +209,6 @@ async function sair() {
     </div>
   </aside>
 
-  <!-- Fundo escuro no celular -->
   <div
     v-if="props.aberto"
     class="sidebar-fundo"
@@ -236,17 +222,13 @@ async function sair() {
   top: 0;
   left: 0;
   z-index: 1000;
-
   width: var(--largura-sidebar, 260px);
   height: 100vh;
   box-sizing: border-box;
   padding: 80px 12px 12px;
-
   display: flex;
   flex-direction: column;
-
   overflow-y: auto;
-
   background: var(--cor-lateral);
   border-right: 1px solid var(--cor-borda);
   border-radius: 0 5px 5px 0;
@@ -267,19 +249,14 @@ async function sair() {
   display: flex;
   align-items: center;
   gap: 10px;
-
   width: 100%;
   box-sizing: border-box;
   padding: 12px;
   margin-bottom: 12px;
-
   color: #fff;
   text-decoration: none;
   border-radius: 8px;
-
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .sidebar-link ion-icon {
@@ -294,7 +271,6 @@ async function sair() {
   color: #000;
 }
 
-/* Área do perfil no final */
 .perfil-container {
   position: relative;
   margin-top: auto;
@@ -302,29 +278,27 @@ async function sair() {
   border-top: 1px solid var(--cor-borda);
 }
 
-/* Botão do perfil */
 .perfil-botao {
   display: flex;
   align-items: center;
   gap: 10px;
-
   width: 100%;
   min-width: 0;
   padding: 10px 6px;
-
   color: var(--cor-texto);
   background: transparent;
   border: 0;
   border-radius: 10px;
   text-align: left;
   cursor: pointer;
-
   transition: background-color 0.2s ease;
 }
 
 .perfil-botao:hover {
   background: var(--cor-superficie-hover);
-}.logo-sidebar {
+}
+
+.logo-sidebar {
   display: block;
   width: 200px;
   max-width: 100%;
@@ -332,17 +306,16 @@ async function sair() {
   object-fit: contain;
   margin: -40px auto 40px;
 }
+
 .perfil-foto,
 .foto-conta {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 42px;
   height: 42px;
   overflow: hidden;
-
   color: #fff;
   background: #424242;
   border-radius: 50%;
@@ -377,6 +350,9 @@ async function sair() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+strong{
+  color:#fff; 
+}
 
 .perfil-dados span,
 .conta-dados span {
@@ -393,16 +369,13 @@ async function sair() {
   color: var(--cor-texto-suave);
 }
 
-/* Painel que abre acima do perfil */
 .perfil-dropdown {
   position: absolute;
   bottom: calc(100% + 10px);
   left: 0;
-
   width: 100%;
   box-sizing: border-box;
   padding: 12px;
-
   color: var(--cor-texto);
   background: var(--cor-superficie);
   border: 1px solid var(--cor-borda);
@@ -457,10 +430,8 @@ async function sair() {
   display: flex;
   align-items: center;
   gap: 10px;
-
   width: 100%;
   padding: 10px 8px;
-
   color: var(--cor-texto);
   background: transparent;
   border: 0;
@@ -482,12 +453,9 @@ async function sair() {
   color: #ef4444;
 }
 
-/* Animação do painel */
 .perfil-enter-active,
 .perfil-leave-active {
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .perfil-enter-from,
@@ -496,7 +464,6 @@ async function sair() {
   transform: translateY(8px);
 }
 
-/* Celular */
 .sidebar-fundo {
   display: none;
 }
@@ -505,7 +472,6 @@ async function sair() {
   .sidebar {
     width: min(var(--largura-sidebar, 260px), 85vw);
     padding-top: 70px;
-
     transform: translateX(-100%);
     transition: transform 0.3s ease;
   }
