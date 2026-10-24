@@ -12,6 +12,7 @@
     "@editorjs/editorjs": "^2.31.7",
     "@editorjs/header": "^2.8.9",
     "@editorjs/list": "^2.0.9",
+    "@google/genai": "^2.31.0",
     "@tiptap/extension-color": "^3.32.0",
     "@tiptap/extension-task-item": "^3.32.0",
     "@tiptap/extension-task-list": "^3.32.0",

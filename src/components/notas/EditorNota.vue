@@ -1,71 +1,65 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useEditor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import TaskList from '@tiptap/extension-task-list'
-import TaskItem from '@tiptap/extension-task-item'
-import {
-  TextStyle,
-  FontFamily,
-  FontSize,
-} from '@tiptap/extension-text-style'
-import Color from '@tiptap/extension-color'
-import { useNotasStore } from '@/stores/notas'
+import { ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import { TextStyle, FontFamily, FontSize } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import { useNotasStore } from "@/stores/notas";
 
-const CHAVE_TITULO = 'nexos-nota-titulo'
-const CHAVE_CONTEUDO = 'nexos-nota-conteudo'
-const COR_PADRAO = '#ffffff'
-const TEMPO_SALVAMENTO = 1000
-const notasStore = useNotasStore()
+const CHAVE_TITULO = "nexos-nota-titulo";
+const CHAVE_CONTEUDO = "nexos-nota-conteudo";
+const COR_PADRAO = "#ffffff";
+const TEMPO_SALVAMENTO = 1000;
+const notasStore = useNotasStore();
 
-const titulo = ref(
-  localStorage.getItem(CHAVE_TITULO) || 'Minha primeira nota'
-)
-const notaId = ref(null)
+const titulo = ref(localStorage.getItem(CHAVE_TITULO) || "Minha primeira nota");
+const notaId = ref(null);
 
-const fonte = ref('Inter')
-const tamanhoFonte = ref('16px')
-const corTexto = ref(COR_PADRAO)
-const salvamento = ref('Salvo')
-let temporizadorSalvamento = null
-let carregandoNota = false
+const fonte = ref("Inter");
+const tamanhoFonte = ref("16px");
+const corTexto = ref(COR_PADRAO);
+const salvamento = ref("Salvo");
+let temporizadorSalvamento = null;
+let carregandoNota = false;
 
 // Altura do teclado virtual (px). Usada para a barra ficar acima dele no celular.
-const teclado = ref(0)
+const teclado = ref(0);
 
 /*
  * O seletor de cor só aceita #rrggbb, mas o Tiptap devolve rgb(...)
  * quando lê o HTML salvo. Esta função normaliza.
  */
 function paraHex(cor) {
-  if (!cor) return COR_PADRAO
+  if (!cor) return COR_PADRAO;
 
-  if (cor.startsWith('#')) {
-    return cor.length === 7 ? cor : COR_PADRAO
+  if (cor.startsWith("#")) {
+    return cor.length === 7 ? cor : COR_PADRAO;
   }
 
-  const partes = cor.match(/\d+/g)
+  const partes = cor.match(/\d+/g);
 
   if (partes && partes.length >= 3) {
     return (
-      '#' +
+      "#" +
       partes
         .slice(0, 3)
-        .map((n) => Number(n).toString(16).padStart(2, '0'))
-        .join('')
-    )
+        .map((n) => Number(n).toString(16).padStart(2, "0"))
+        .join("")
+    );
   }
 
-  return COR_PADRAO
+  return COR_PADRAO;
 }
 
 // Mantém fonte, tamanho e cor da barra iguais ao trecho onde o cursor está.
 function sincronizarEstilos(instancia) {
-  const atributos = instancia.getAttributes('textStyle')
+  const atributos = instancia.getAttributes("textStyle");
 
-  fonte.value = atributos.fontFamily || 'Inter'
-  tamanhoFonte.value = atributos.fontSize || '16px'
-  corTexto.value = paraHex(atributos.color)
+  fonte.value = atributos.fontFamily || "Inter";
+  tamanhoFonte.value = atributos.fontSize || "16px";
+  corTexto.value = paraHex(atributos.color);
 }
 
 const editor = useEditor({
@@ -80,102 +74,103 @@ const editor = useEditor({
     TaskItem.configure({
       nested: true,
       HTMLAttributes: {
-        class: 'item-checklist',
+        class: "item-checklist",
       },
     }),
   ],
 
   content:
     localStorage.getItem(CHAVE_CONTEUDO) ||
-    '<h2>Minha nota</h2><p>Comece a escrever aqui...</p>',
+    "<h2>Minha nota</h2><p>Comece a escrever aqui...</p>",
 
   onUpdate({ editor }) {
-    localStorage.setItem(CHAVE_CONTEUDO, editor.getHTML())
-    agendarSalvamento()
+    localStorage.setItem(CHAVE_CONTEUDO, editor.getHTML());
+    agendarSalvamento();
   },
 
   onSelectionUpdate({ editor }) {
-    sincronizarEstilos(editor)
+    sincronizarEstilos(editor);
   },
-})
+});
 
-watch(titulo, (novoTitulo) => {
-  localStorage.setItem(CHAVE_TITULO, novoTitulo)
-  if (carregandoNota) return
-  agendarSalvamento()
-}, { flush: 'sync' })
+watch(
+  titulo,
+  (novoTitulo) => {
+    localStorage.setItem(CHAVE_TITULO, novoTitulo);
+    if (carregandoNota) return;
+    agendarSalvamento();
+  },
+  { flush: "sync" },
+);
 
 function agendarSalvamento() {
   if (temporizadorSalvamento) {
-    clearTimeout(temporizadorSalvamento)
+    clearTimeout(temporizadorSalvamento);
   }
 
-  salvamento.value = 'Alterações pendentes'
-  temporizadorSalvamento = setTimeout(salvarNota, TEMPO_SALVAMENTO)
+  salvamento.value = "Alterações pendentes";
+  temporizadorSalvamento = setTimeout(salvarNota, TEMPO_SALVAMENTO);
 }
 
 async function salvarNota() {
-  temporizadorSalvamento = null
+  temporizadorSalvamento = null;
 
-  if (!editor.value) return
+  if (!editor.value) return;
 
-  salvamento.value = 'Salvando...'
+  salvamento.value = "Salvando...";
 
   try {
     const dadosNota = {
-      titulo: titulo.value.trim() || 'Sem título',
+      titulo: titulo.value.trim() || "Sem título",
       texto: editor.value.getHTML(),
-    }
+    };
 
     const notaSalva = notaId.value
       ? await notasStore.updateNota(notaId.value, dadosNota)
-      : await notasStore.addNota(dadosNota)
+      : await notasStore.addNota(dadosNota);
 
-    notaId.value = notaSalva?.id || notaId.value
-    salvamento.value = 'Salvo automaticamente'
+    notaId.value = notaSalva?.id || notaId.value;
+    salvamento.value = "Salvo automaticamente";
   } catch (err) {
-    salvamento.value = 'Erro ao salvar'
-    console.error('Erro ao salvar nota automaticamente:', err)
+    salvamento.value = "Erro ao salvar";
+    console.error("Erro ao salvar nota automaticamente:", err);
   }
 }
 
 function carregarNota(nota) {
-  if (!nota?.id) return
+  if (!nota?.id) return;
 
-  carregandoNota = true
-  notaId.value = nota.id
-  titulo.value = nota.titulo || ''
-  editor.value?.commands.setContent(
-    nota.texto || nota.conteudo || '',
-    false
-  )
-  carregandoNota = false
-  salvamento.value = 'Salvo'
+  carregandoNota = true;
+  notaId.value = nota.id;
+  titulo.value = nota.titulo || "";
+  editor.value?.commands.setContent(nota.texto || nota.conteudo || "", false);
+  carregandoNota = false;
+  salvamento.value = "Salvo";
 }
 
 function prepararNovaNota() {
-  notaId.value = null
-  titulo.value = ''
-  editor.value?.commands.setContent('', false)
-  salvamento.value = 'Rascunho local'
+  notaId.value = null;
+  titulo.value = "";
+  editor.value?.commands.setContent("", false);
+  salvamento.value = "Rascunho local";
 }
 
 async function abrirNota(event) {
-  const id = event?.detail?.id
-  if (!id) return
+  const id = event?.detail?.id;
+  if (!id) return;
 
-  let nota = notasStore.notas.find((item) => item.id === id)
+  let nota = notasStore.notas.find((item) => item.id === id);
 
   if (!nota) {
     try {
-      await notasStore.fetchNotas()
-      nota = notasStore.notas.find((item) => item.id === id)
+      await notasStore.fetchNotas();
+      nota = notasStore.notas.find((item) => item.id === id);
     } catch (err) {
-      console.error('Erro ao carregar nota para edição:', err)
+      console.error("Erro ao carregar nota para edição:", err);
     }
   }
 
-  if (nota) carregarNota(nota)
+  if (nota) carregarNota(nota);
 }
 
 /*
@@ -183,67 +178,55 @@ async function abrirNota(event) {
  * Medimos a área visível e levantamos a barra para ficar logo acima dele.
  */
 function atualizarTeclado() {
-  const vv = window.visualViewport
+  const vv = window.visualViewport;
 
-  if (!vv) return
+  if (!vv) return;
 
   // Com zoom (pinça) não é teclado.
   if (vv.scale > 1.01) {
-    teclado.value = 0
-    return
+    teclado.value = 0;
+    return;
   }
 
-  const altura = Math.round(window.innerHeight - vv.height - vv.offsetTop)
+  const altura = Math.round(window.innerHeight - vv.height - vv.offsetTop);
 
-  teclado.value = altura < 80 ? 0 : altura
+  teclado.value = altura < 80 ? 0 : altura;
 }
 
 onMounted(() => {
-  window.visualViewport?.addEventListener('resize', atualizarTeclado)
-  window.visualViewport?.addEventListener('scroll', atualizarTeclado)
-  window.addEventListener('nexos-nota-abrir', abrirNota)
-  window.addEventListener('nexos-nota-nova', prepararNovaNota)
-})
+  window.visualViewport?.addEventListener("resize", atualizarTeclado);
+  window.visualViewport?.addEventListener("scroll", atualizarTeclado);
+  window.addEventListener("nexos-nota-abrir", abrirNota);
+  window.addEventListener("nexos-nota-nova", prepararNovaNota);
+});
 
 onBeforeUnmount(() => {
   if (temporizadorSalvamento) {
-    clearTimeout(temporizadorSalvamento)
+    clearTimeout(temporizadorSalvamento);
   }
 
-  window.visualViewport?.removeEventListener('resize', atualizarTeclado)
-  window.visualViewport?.removeEventListener('scroll', atualizarTeclado)
-  window.removeEventListener('nexos-nota-abrir', abrirNota)
-  window.removeEventListener('nexos-nota-nova', prepararNovaNota)
-  editor.value?.destroy()
-})
+  window.visualViewport?.removeEventListener("resize", atualizarTeclado);
+  window.visualViewport?.removeEventListener("scroll", atualizarTeclado);
+  window.removeEventListener("nexos-nota-abrir", abrirNota);
+  window.removeEventListener("nexos-nota-nova", prepararNovaNota);
+  editor.value?.destroy();
+});
 
 function aplicarFonte() {
-  editor.value
-    ?.chain()
-    .focus()
-    .setFontFamily(fonte.value)
-    .run()
+  editor.value?.chain().focus().setFontFamily(fonte.value).run();
 }
 
 function aplicarTamanho() {
-  editor.value
-    ?.chain()
-    .focus()
-    .setFontSize(tamanhoFonte.value)
-    .run()
+  editor.value?.chain().focus().setFontSize(tamanhoFonte.value).run();
 }
 
 function aplicarCor() {
-  editor.value
-    ?.chain()
-    .focus()
-    .setColor(corTexto.value)
-    .run()
+  editor.value?.chain().focus().setColor(corTexto.value).run();
 }
 
 function removerCor() {
-  editor.value?.chain().focus().unsetColor().run()
-  corTexto.value = COR_PADRAO
+  editor.value?.chain().focus().unsetColor().run();
+  corTexto.value = COR_PADRAO;
 }
 
 /*
@@ -251,128 +234,217 @@ function removerCor() {
  * Os itens anteriores e posteriores continuam como lista normal.
  */
 function adicionarChecklist() {
-  const instancia = editor.value
+  const instancia = editor.value;
 
-  if (!instancia) return
+  if (!instancia) return;
 
-  const { selection } = instancia.state
-  const { $from } = selection
+  const { selection } = instancia.state;
+  const { $from } = selection;
 
-  let nivelItem = -1
-  let nivelLista = -1
+  let nivelItem = -1;
+  let nivelLista = -1;
 
   // Encontra o item e a lista que contêm o cursor.
   for (let nivel = $from.depth; nivel > 0; nivel--) {
-    const nome = $from.node(nivel).type.name
+    const nome = $from.node(nivel).type.name;
 
-    if (nome === 'listItem') {
-      nivelItem = nivel
+    if (nome === "listItem") {
+      nivelItem = nivel;
     }
 
     if (
-      nome === 'bulletList' ||
-      nome === 'orderedList' ||
-      nome === 'taskList'
+      nome === "bulletList" ||
+      nome === "orderedList" ||
+      nome === "taskList"
     ) {
-      nivelLista = nivel
-      break
+      nivelLista = nivel;
+      break;
     }
   }
 
   // Fora de uma lista: cria um checklist normalmente.
   if (nivelItem === -1 || nivelLista === -1) {
-    instancia.chain().focus().toggleTaskList().run()
-    return
+    instancia.chain().focus().toggleTaskList().run();
+    return;
   }
 
-  const lista = $from.node(nivelLista)
-  const item = $from.node(nivelItem)
-  const indiceItem = $from.index(nivelLista)
+  const lista = $from.node(nivelLista);
+  const item = $from.node(nivelItem);
+  const indiceItem = $from.index(nivelLista);
 
   // Se a lista já for checklist, mantém o comportamento de alternância.
-  if (lista.type.name === 'taskList') {
-    instancia.chain().focus().toggleTaskList().run()
-    return
+  if (lista.type.name === "taskList") {
+    instancia.chain().focus().toggleTaskList().run();
+    return;
   }
 
   // Guarda os itens anteriores e posteriores ao item selecionado.
-  const itens = []
+  const itens = [];
 
   lista.forEach((no, indice) => {
     itens.push({
       node: no,
       indice,
-    })
-  })
+    });
+  });
 
   const anteriores = itens
     .filter(({ indice }) => indice < indiceItem)
-    .map(({ node }) => node)
+    .map(({ node }) => node);
 
   const posteriores = itens
     .filter(({ indice }) => indice > indiceItem)
-    .map(({ node }) => node)
+    .map(({ node }) => node);
 
-  const tipoLista = lista.type.name
-  const schema = instancia.state.schema
+  const tipoLista = lista.type.name;
+  const schema = instancia.state.schema;
 
-  const tipoListaNormal = schema.nodes[tipoLista]
-  const tipoTaskList = schema.nodes.taskList
-  const tipoTaskItem = schema.nodes.taskItem
-  const tipoItemNormal = schema.nodes.listItem
+  const tipoListaNormal = schema.nodes[tipoLista];
+  const tipoTaskList = schema.nodes.taskList;
+  const tipoTaskItem = schema.nodes.taskItem;
+  const tipoItemNormal = schema.nodes.listItem;
 
-  if (
-    !tipoListaNormal ||
-    !tipoTaskList ||
-    !tipoTaskItem ||
-    !tipoItemNormal
-  ) {
-    console.error('Não foi possível encontrar os tipos de lista do Tiptap.')
-    return
+  if (!tipoListaNormal || !tipoTaskList || !tipoTaskItem || !tipoItemNormal) {
+    console.error("Não foi possível encontrar os tipos de lista do Tiptap.");
+    return;
   }
 
   // Converte o conteúdo do item selecionado para um item de checklist.
-  const conteudos = []
+  const conteudos = [];
 
-  item.forEach((filho) => conteudos.push(filho))
+  item.forEach((filho) => conteudos.push(filho));
 
-  const novoItem = tipoTaskItem.create(
-    { checked: false },
-    conteudos
-  )
+  const novoItem = tipoTaskItem.create({ checked: false }, conteudos);
 
-  const novosBlocos = []
+  const novosBlocos = [];
 
   if (anteriores.length > 0) {
-    novosBlocos.push(tipoListaNormal.create(null, anteriores))
+    novosBlocos.push(tipoListaNormal.create(null, anteriores));
   }
 
-  novosBlocos.push(tipoTaskList.create(null, [novoItem]))
+  novosBlocos.push(tipoTaskList.create(null, [novoItem]));
 
   if (posteriores.length > 0) {
-    novosBlocos.push(tipoListaNormal.create(null, posteriores))
+    novosBlocos.push(tipoListaNormal.create(null, posteriores));
   }
 
   // Substitui a lista original pelas listas resultantes.
-  const inicioLista = $from.before(nivelLista)
-  const fimLista = inicioLista + lista.nodeSize
+  const inicioLista = $from.before(nivelLista);
+  const fimLista = inicioLista + lista.nodeSize;
 
   const transacao = instancia.state.tr.replaceWith(
     inicioLista,
     fimLista,
-    novosBlocos
-  )
+    novosBlocos,
+  );
 
-  instancia.view.dispatch(transacao)
-  instancia.commands.focus()
+  instancia.view.dispatch(transacao);
+  instancia.commands.focus();
 }
 
 function alternarMarcadores() {
-  editor.value?.chain().focus().toggleBulletList().run()
+  editor.value?.chain().focus().toggleBulletList().run();
 }
 
 function alternarNumeracao() {
-  editor.value?.chain().focus().toggleOrderedList().run()
+  editor.value?.chain().focus().toggleOrderedList().run();
+}
+
+// Adiciona IA no EditarNota
+
+// Adiciona IA no EditarNota
+
+import { GoogleGenAI } from "@google/genai";
+
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+const ai = new GoogleGenAI({ apiKey: `${API_KEY}` });
+
+const result = ref("");
+const historySaved = ref([]);
+
+const chat = ai.chats.create({
+  model: "gemini-3.5-flash-lite",
+});
+
+async function main(pergunta) {
+  if (!pergunta?.trim()) return "";
+
+  result.value = "";
+
+  try {
+    const response = await chat.sendMessageStream({
+      message: pergunta,
+    });
+    for await (const chunk of response) {
+      result.value += chunk.text || "";
+    }
+    historySaved.value = chat.getHistory();
+    return result.value.trim();
+  } catch (err) {
+    console.error(err);
+    return "";
+  }
+}
+
+function substituirConteudoDoEditor(texto) {
+  if (!texto || !editor.value) return;
+
+  editor.value.commands.setContent(
+    `<p>${texto
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>")}</p>`,
+  );
+}
+
+const loadingContinuar = ref(false);
+const loadingResumir = ref(false);
+const loadingExplicar = ref(false);
+
+async function handleContinuarPerguntaIA() {
+  loadingContinuar.value = true;
+  const conteudo = editor.value?.getText().trim();
+
+  if (!conteudo) return (loadingContinuar.value = false);
+
+  const continuar = await main(
+    `Continue o conteúdo listado no editor. Sem Markdown:\n\n${conteudo}`,
+  );
+
+  if (!continuar?.trim()) return;
+
+  const resposta = await main(continuar);
+
+  const respostaFinal = conteudo + "\n\n" + resposta;
+
+  substituirConteudoDoEditor(respostaFinal);
+  loadingContinuar.value = false;
+}
+
+async function handleResumirNotaIA() {
+  loadingResumir.value = true;
+  const conteudo = editor.value?.getText().trim();
+  if (!conteudo) return (loadingResumir.value = false);
+
+  const resposta = await main(
+    `Resuma o conteúdo abaixo de forma clara e objetiva. Retorne apenas o resumo para ser inserido no editor. Sem Markdown:\n\n${conteudo}`,
+  );
+  substituirConteudoDoEditor(resposta);
+  loadingResumir.value = false;
+}
+
+async function handleExplicarNotaIA() {
+  loadingExplicar.value = true;
+  const conteudo = editor.value?.getText().trim();
+  if (!conteudo) return (loadingExplicar.value = false);
+
+  const resposta = await main(
+    `Explique o conteúdo abaixo de forma clara e objetiva. Retorne apenas a explicação para ser inserida no editor. Sem Markdown:\n\n${conteudo}`,
+  );
+  substituirConteudoDoEditor(resposta);
+  loadingExplicar.value = false;
 }
 </script>
 
@@ -586,10 +658,7 @@ function alternarNumeracao() {
       <!-- Cor -->
       <div class="grupo-fmt">
         <label class="btn-fmt controle-cor" title="Cor do texto">
-          <span
-            class="amostra-cor"
-            :style="{ background: corTexto }"
-          ></span>
+          <span class="amostra-cor" :style="{ background: corTexto }"></span>
 
           <input
             v-model="corTexto"
@@ -611,10 +680,23 @@ function alternarNumeracao() {
       </div>
     </div>
 
-    <EditorContent
-      :editor="editor"
-      class="area-escrita"
-    />
+    <EditorContent :editor="editor" class="area-escrita" />
+    <div>
+      <div style="margin-top: 3vw;"><h3>Auxílio com IA</h3></div>
+      <div class="grupo-fmt" style="margin-top: 1vw; gap: 0.5vw">
+        <button type="button" @click="handleContinuarPerguntaIA">
+          {{ loadingContinuar ? "Continuando..." : "Continuar" }}
+        </button>
+
+        <button type="button" @click="handleResumirNotaIA">
+          {{ loadingResumir ? "Resumindo..." : "Resumir" }}
+        </button>
+
+        <button type="button" @click="handleExplicarNotaIA">
+          {{ loadingExplicar ? "Explicando..." : "Explicar" }}
+        </button>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -799,7 +881,7 @@ function alternarNumeracao() {
   box-sizing: border-box;
 }
 
-.controle-cor input[type='color'] {
+.controle-cor input[type="color"] {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -828,13 +910,13 @@ function alternarNumeracao() {
   padding-left: 28px;
 }
 
-.area-escrita .tiptap ul[data-type='taskList'] {
+.area-escrita .tiptap ul[data-type="taskList"] {
   list-style: none;
   padding-left: 0;
   margin-left: 0;
 }
 
-.area-escrita .tiptap ul[data-type='taskList'] li {
+.area-escrita .tiptap ul[data-type="taskList"] li {
   display: flex;
   align-items: flex-start;
   gap: 9px;
@@ -842,22 +924,22 @@ function alternarNumeracao() {
   padding: 0;
 }
 
-.area-escrita .tiptap ul[data-type='taskList'] li > label {
+.area-escrita .tiptap ul[data-type="taskList"] li > label {
   flex: 0 0 auto;
   margin: 5px 0 0;
   user-select: none;
 }
 
-.area-escrita .tiptap ul[data-type='taskList'] li > div {
+.area-escrita .tiptap ul[data-type="taskList"] li > div {
   flex: 1;
   min-width: 0;
 }
 
-.area-escrita .tiptap ul[data-type='taskList'] li > div > p {
+.area-escrita .tiptap ul[data-type="taskList"] li > div > p {
   margin: 0;
 }
 
-.area-escrita .tiptap ul[data-type='taskList'] input[type='checkbox'] {
+.area-escrita .tiptap ul[data-type="taskList"] input[type="checkbox"] {
   width: 16px;
   height: 16px;
   accent-color: #ff5700;
