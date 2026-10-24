@@ -14,7 +14,7 @@ const notasApi = {
   },
 
   atualizar(id, data) {
-    return apiClient.put(`/notas/${id}/`, data)
+    return apiClient.patch(`/notas/${id}/`, data)
   },
 
   deletar(id) {

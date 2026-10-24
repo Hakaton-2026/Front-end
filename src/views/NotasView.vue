@@ -1,27 +1,25 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
-import {useNotasStore} from '@/stores/notas'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useNotasStore } from '@/stores/notas'
 import SidebarNotas from '@/components/notas/SidebarNotas.vue'
 import EditorNota from '@/components/notas/EditorNota.vue'
 
-const CHAVE_NOTAS = 'nexos-notas'
 const notasStore = useNotasStore()
 
 const sidebarNotasAberta = ref(false)
 const secaoAtiva = ref('editor')
-const notas = ref([])
-
 const notasRecentes = computed(() =>
-  [...notas.value]
-    .sort((a, b) => (b.atualizadoEm ?? 0) - (a.atualizadoEm ?? 0))
+  [...notasStore.notas]
+    .sort((a, b) => (b.atualizadoEm ?? b.updated_at ?? b.id ?? 0)
+      - (a.atualizadoEm ?? a.updated_at ?? a.id ?? 0))
     .slice(0, 8)
 )
 
 const favoritos = computed(() =>
-  notas.value.filter((nota) => Boolean(nota.favorito))
+  notasStore.notas.filter((nota) => Boolean(nota.favorito))
 )
 
-const documentos = computed(() => notas.value.slice(0, 10))
+const documentos = computed(() => notasStore.notas.slice(0, 10))
 
 const listaAtual = computed(() => {
   switch (secaoAtiva.value) {
@@ -35,15 +33,6 @@ const listaAtual = computed(() => {
       return []
   }
 })
-
-function carregarNotas() {
-  try {
-    const salvas = JSON.parse(localStorage.getItem(CHAVE_NOTAS) || '[]')
-    notas.value = Array.isArray(salvas) ? salvas : []
-  } catch {
-    notas.value = []
-  }
-}
 
 function formatarData(valor) {
   if (!valor) return 'Hoje'
@@ -80,91 +69,52 @@ function selecionarSecao(novaSecao) {
   secaoAtiva.value = novaSecao
 }
 
-function abrirNota(notaId) {
+async function abrirNota(notaId) {
   secaoAtiva.value = 'editor'
+  await nextTick()
   window.dispatchEvent(
     new CustomEvent('nexos-nota-abrir', { detail: { id: notaId } })
   )
 }
 
-function criarNovaNota() {
+async function criarNovaNota() {
   secaoAtiva.value = 'editor'
+  await nextTick()
   window.dispatchEvent(new CustomEvent('nexos-nota-nova'))
 }
 
-function excluirNota(notaId) {
-  const lista = [...notas.value].filter((nota) => nota.id !== notaId)
-  notas.value = lista
-  localStorage.setItem(CHAVE_NOTAS, JSON.stringify(lista))
-  window.dispatchEvent(new CustomEvent('nexos-nota-removida', { detail: notaId }))
+async function excluirNota(notaId) {
+  await notasStore.deleteNota(notaId)
 }
 
-function duplicarNota(notaId) {
-  const origem = notas.value.find((nota) => nota.id === notaId)
+async function duplicarNota(notaId) {
+  const origem = notasStore.notas.find((nota) => nota.id === notaId)
 
   if (!origem) return
 
-  const copia = {
+  await notasStore.addNota({
     ...origem,
-    id: `${origem.id}-copia-${Date.now()}`,
     titulo: `${origem.titulo || 'Nota'} (cópia)`,
-    favorito: false,
-    atualizadoEm: Date.now(),
-  }
-
-  const lista = [copia, ...notas.value.filter((nota) => nota.id !== notaId)]
-  notas.value = lista
-  localStorage.setItem(CHAVE_NOTAS, JSON.stringify(lista))
-  window.dispatchEvent(new CustomEvent('nexos-nota-salva', { detail: copia }))
-}
-
-function sincronizarNotas(event) {
-  const novaNota = event?.detail
-
-  if (!novaNota || !novaNota.id) return
-
-  const lista = [...notas.value]
-  const indice = lista.findIndex((nota) => nota.id === novaNota.id)
-
-  if (indice >= 0) {
-    lista[indice] = novaNota
-  } else {
-    lista.unshift(novaNota)
-  }
-
-  notas.value = lista.sort(
-    (a, b) => (b.atualizadoEm ?? 0) - (a.atualizadoEm ?? 0)
-  )
-}
-
-function removerNota(event) {
-  const id = event?.detail
-
-  if (!id) return
-
-  const lista = [...notas.value].filter((nota) => nota.id !== id)
-  notas.value = lista
-}
-          <span>Meus documentos</span>
-
-function atualizarListaCompleta(event) {
-  const lista = Array.isArray(event?.detail) ? event.detail : []
-  notas.value = lista
+    id: undefined,
+  })
 }
 
 onMounted(() => {
-  carregarNotas()
-  window.addEventListener('nexos-nota-salva', sincronizarNotas)
-  window.addEventListener('nexos-nota-removida', removerNota)
-  window.addEventListener('nexos-nota-atualizada', atualizarListaCompleta)
-  notasStore.fetchNotas()
+  notasStore.fetchNotas().catch((err) => {
+    console.error('Não foi possível carregar as notas:', err)
+  })
 })
 
-onBeforeUnmount(() => {
-  window.removeEventListener('nexos-nota-salva', sincronizarNotas)
-  window.removeEventListener('nexos-nota-removida', removerNota)
-  window.removeEventListener('nexos-nota-atualizada', atualizarListaCompleta)
-})
+
+
+watch(
+  () => notasStore.notas,
+  (novasNotas) => {
+    if (!novasNotas.length && secaoAtiva.value !== 'editor') {
+      secaoAtiva.value = 'editor'
+    }
+  }
+)
 
 </script>
 
@@ -239,7 +189,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <h3>{{ nota.titulo || 'Sem título' }}</h3>
-                <p>{{ extrairTexto(nota.conteudo) }}</p>
+                <p>{{ extrairTexto(nota.texto || nota.conteudo) }}</p>
               </button>
 
               <div class="card-nota__acoes">
@@ -266,7 +216,6 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
-    {{ notasStore.notas }}
   </main>
 </template>
 
@@ -435,6 +384,9 @@ onBeforeUnmount(() => {
   background: transparent;
   color: inherit;
   cursor: pointer;
+  overflow: hidden;
+  padding-top: 4px;
+  text-overflow: ellipsis;
 }
 
 .card-nota__topo {
@@ -442,6 +394,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 8px;
   align-items: center;
+  
 }
 
 .badge-favorito {
