@@ -1,0 +1,854 @@
+
+:root {
+  /* Cores vinculadas ao tema ativo */
+  --tf-primary: var(--cor-primaria, #a855f7);
+  --tf-primary-hover: var(--cor-primaria-hover, #9333ea);
+
+  --tf-bg: var(--cor-fundo, #171717);
+  --tf-surface: var(--cor-superficie, #222222);
+  --tf-surface-hover: var(--cor-superficie-hover, #2c2c2c);
+
+  --tf-text: var(--cor-texto, #f5f5f5);
+  --tf-muted: var(--cor-texto-suave, #a3a3a3);
+  --tf-border: var(--cor-borda, #383838);
+
+  --tf-on-primary: #ffffff;
+  --tf-green: #22c55e;
+  --tf-blue: #38bdf8;
+  --tf-danger: #f87171;
+}
+
+/* ================================
+   PÁGINA
+================================ */
+
+.tf-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1450px;
+  margin: 0 auto;
+  padding: 32px;
+  color: var(--tf-text);
+}
+
+.tf-page *,
+.tf-page *::before,
+.tf-page *::after {
+  box-sizing: border-box;
+}
+
+.tf-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.tf-page-header h1 {
+  margin: 8px 0;
+  color: var(--tf-text);
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.tf-page-header p,
+.tf-section-heading p {
+  margin: 0;
+  color: var(--tf-muted);
+}
+
+.tf-eyebrow {
+  color: var(--tf-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+/* ================================
+   BOTÕES
+================================ */
+
+.tf-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+
+  border: 1px solid var(--tf-primary);
+  border-radius: 10px;
+
+  background: var(--tf-primary);
+  color: var(--tf-on-primary);
+
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.tf-button:hover {
+  background: var(--tf-primary-hover);
+  border-color: var(--tf-primary-hover);
+  color: var(--tf-on-primary);
+  transform: translateY(-1px);
+
+  box-shadow: 0 4px 14px
+    color-mix(in srgb, var(--tf-primary) 18%, transparent);
+}
+
+.tf-button:active {
+  transform: translateY(0);
+}
+
+.tf-button:focus-visible,
+.tf-text-link:focus-visible,
+.tf-project-link:focus-visible,
+.tf-delete:focus-visible {
+  outline: 2px solid var(--tf-primary);
+  outline-offset: 3px;
+}
+
+/* Botões secundários:
+   texto escuro no tema claro e claro no tema escuro */
+
+.tf-button-secondary {
+  background: transparent;
+  color: var(--tf-text);
+  border-color: var(--tf-border);
+}
+
+.tf-button-secondary:hover {
+  background: var(--tf-surface-hover);
+  border-color: var(--tf-primary);
+  color: var(--tf-text);
+  box-shadow: none;
+}
+
+.tf-page .tf-button.tf-button-secondary,
+.tf-page .tf-button.tf-button-secondary:hover,
+.tf-page .tf-button.tf-button-secondary:focus-visible {
+  color: var(--tf-text);
+}
+
+/* Campos respeitam o tema ativo */
+
+.tf-page :is(input, select, textarea) {
+  color-scheme: inherit;
+}
+
+.tf-page :is(input, textarea)::placeholder {
+  color: var(--tf-muted);
+  opacity: 1;
+}
+
+/* ================================
+   ESTATÍSTICAS
+================================ */
+
+.tf-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.tf-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+  padding: 22px;
+
+  border: 1px solid var(--tf-border);
+  border-radius: 16px;
+  background: var(--tf-surface);
+  color: var(--tf-text);
+
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.tf-stat-card:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--tf-primary) 45%,
+    transparent
+  );
+
+  transform: translateY(-2px);
+}
+
+.tf-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+
+  border-radius: 13px;
+
+  background: color-mix(
+    in srgb,
+    var(--tf-primary) 14%,
+    transparent
+  );
+
+  color: var(--tf-primary);
+  font-size: 24px;
+}
+
+.tf-stat-green,
+.tf-stat-blue {
+  background: color-mix(
+    in srgb,
+    var(--tf-primary) 14%,
+    transparent
+  );
+
+  color: var(--tf-primary);
+}
+
+.tf-stat-card p {
+  margin: 0 0 5px;
+  color: var(--tf-muted);
+  font-size: 0.9rem;
+}
+
+.tf-stat-card strong {
+  color: var(--tf-text);
+  font-size: 1.7rem;
+  font-weight: 750;
+}
+
+/* ================================
+   PAINÉIS
+================================ */
+
+.tf-task-panel,
+.tf-create-project {
+  margin-bottom: 24px;
+  padding: 24px;
+
+  border: 1px solid var(--tf-border);
+  border-radius: 16px;
+  background: var(--tf-surface);
+  color: var(--tf-text);
+}
+
+.tf-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.tf-section-heading h2,
+.tf-create-project label {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--tf-text);
+  font-size: 1.15rem;
+  font-weight: 750;
+}
+
+.tf-section-heading p {
+  color: var(--tf-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ================================
+   FORMULÁRIOS
+================================ */
+
+.tf-create-task,
+.tf-form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.tf-create-task input,
+.tf-create-task select,
+.tf-form-row input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 0 14px;
+
+  border: 1px solid var(--tf-border);
+  border-radius: 10px;
+  outline: none;
+
+  background: var(--tf-bg);
+  color: var(--tf-text);
+
+  font: inherit;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.tf-create-task input {
+  flex: 2;
+}
+
+.tf-create-task select {
+  flex: 1;
+  cursor: pointer;
+}
+
+.tf-form-row input {
+  flex: 1;
+}
+
+.tf-create-task input::placeholder,
+.tf-form-row input::placeholder {
+  color: var(--tf-muted);
+  opacity: 0.8;
+}
+
+.tf-create-task input:focus,
+.tf-create-task select:focus,
+.tf-form-row input:focus {
+  border-color: var(--tf-primary);
+
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--tf-primary) 16%, transparent);
+}
+
+.tf-create-task select option {
+  background: var(--tf-bg);
+  color: var(--tf-text);
+}
+
+/* ================================
+   MENSAGENS
+================================ */
+
+.tf-message {
+  margin: 12px 0 0;
+  color: var(--tf-primary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ================================
+   LISTA DE TAREFAS
+================================ */
+
+.tf-task-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.tf-task-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 0;
+
+  border-bottom: 1px solid var(--tf-border);
+}
+
+.tf-task-item:last-child {
+  border-bottom: 0;
+}
+
+.tf-task-label {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.tf-task-label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.tf-task-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+
+  border: 2px solid var(--tf-muted);
+  border-radius: 7px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.tf-task-label:hover .tf-task-check {
+  border-color: var(--tf-primary);
+}
+
+.tf-task-label input:checked + .tf-task-check {
+  border-color: var(--tf-primary);
+  background: var(--tf-primary);
+}
+
+.tf-task-label input:checked + .tf-task-check::after {
+  content: "✓";
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.tf-task-label input:focus-visible + .tf-task-check {
+  outline: 2px solid var(--tf-primary);
+  outline-offset: 3px;
+}
+
+.tf-task-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.tf-task-content strong {
+  color: var(--tf-text);
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.tf-task-content small {
+  color: var(--tf-muted);
+  overflow-wrap: anywhere;
+}
+
+.tf-task-done .tf-task-content strong {
+  color: var(--tf-muted);
+  text-decoration: line-through;
+}
+
+/* ================================
+   EXCLUIR TAREFA
+================================ */
+
+.tf-delete {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+
+  border: 1px solid transparent;
+  border-radius: 9px;
+
+  background: transparent;
+  color: var(--tf-muted);
+
+  font-size: 19px;
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.tf-delete:hover {
+  border-color: #f8717144;
+  background: #f8717118;
+  color: var(--tf-danger);
+}
+
+/* ================================
+   ESTADO VAZIO
+================================ */
+
+.tf-empty {
+  padding: 35px 15px;
+  text-align: center;
+  color: var(--tf-muted);
+}
+
+.tf-empty > ion-icon {
+  color: var(--tf-primary);
+  font-size: 42px;
+}
+
+.tf-empty h2 {
+  margin: 12px 0 7px;
+  color: var(--tf-text);
+  font-size: 1.1rem;
+}
+
+.tf-empty p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ================================
+   LINKS
+================================ */
+
+.tf-text-link,
+.tf-project-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  color: var(--tf-primary);
+  text-decoration: none;
+  font-weight: 650;
+
+  transition: color 0.2s ease;
+}
+
+.tf-text-link:hover,
+.tf-project-link:hover {
+  color: var(--tf-primary-hover);
+}
+
+/* ================================
+   PROGRESSO DOS PROJETOS
+================================ */
+
+.tf-project-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 23px;
+}
+
+.tf-project-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tf-progress-info {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.tf-progress-info span {
+  overflow-wrap: anywhere;
+}
+
+.tf-progress-info strong {
+  flex-shrink: 0;
+  color: var(--tf-primary);
+}
+
+.tf-progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+
+  border-radius: 20px;
+  background: var(--tf-border);
+}
+
+.tf-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tf-primary);
+  transition: width 0.35s ease;
+}
+
+/* ================================
+   CARTÕES DE PROJETOS
+================================ */
+
+.tf-project-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.tf-project-card {
+  min-width: 0;
+  padding: 22px;
+
+  border: 1px solid var(--tf-border);
+  border-radius: 16px;
+  background: var(--tf-surface);
+  color: var(--tf-text);
+
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.tf-project-card:hover {
+  border-color: var(--tf-primary);
+  transform: translateY(-3px);
+}
+
+.tf-project-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tf-project-heading h2 {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--tf-text);
+  font-size: 1.05rem;
+}
+
+.tf-project-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--tf-primary);
+}
+
+.tf-project-description {
+  margin: 14px 0 24px;
+  color: var(--tf-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.tf-project-card .tf-progress-track {
+  margin-top: 10px;
+}
+
+.tf-project-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+
+  color: var(--tf-muted);
+  font-size: 0.85rem;
+}
+
+.tf-project-stats span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tf-project-stats ion-icon {
+  color: var(--tf-primary);
+}
+
+.tf-project-link {
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 16px;
+
+  border-top: 1px solid var(--tf-border);
+}
+
+/* ================================
+   PARTICIPANTES
+================================ */
+
+.tf-participant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tf-participant-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+
+  border: 1px solid var(--tf-border);
+  border-radius: 12px;
+  background: var(--tf-bg);
+  color: var(--tf-text);
+}
+
+.tf-participant-item strong,
+.tf-participant-item small {
+  overflow-wrap: anywhere;
+}
+
+.tf-participant-item small {
+  display: block;
+  margin-top: 4px;
+  color: var(--tf-muted);
+}
+
+.tf-participant-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: color-mix(
+    in srgb,
+    var(--tf-primary) 14%,
+    transparent
+  );
+
+  color: var(--tf-primary);
+  font-weight: 750;
+}
+
+/* ================================
+   RESPONSIVIDADE: TABLETS
+================================ */
+
+@media (max-width: 1000px) {
+  .tf-project-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tf-stats-grid {
+    gap: 12px;
+  }
+
+  .tf-stat-card {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 900px) {
+  .tf-create-task {
+    flex-wrap: wrap;
+  }
+
+  .tf-create-task input {
+    flex-basis: 100%;
+  }
+
+  .tf-create-task select {
+    flex: 1;
+  }
+}
+
+/* ================================
+   RESPONSIVIDADE: CELULARES
+================================ */
+
+@media (max-width: 600px) {
+  .tf-page {
+    padding: 18px 14px;
+  }
+
+  .tf-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .tf-page-header .tf-button {
+    width: 100%;
+  }
+
+  .tf-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .tf-stat-card {
+    padding: 16px;
+  }
+
+  .tf-task-panel,
+  .tf-create-project {
+    padding: 17px;
+    border-radius: 13px;
+  }
+
+  .tf-create-task,
+  .tf-form-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tf-create-task input,
+  .tf-create-task select,
+  .tf-form-row input,
+  .tf-create-task .tf-button,
+  .tf-form-row .tf-button {
+    width: 100%;
+    flex: none;
+  }
+
+  .tf-project-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tf-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .tf-task-item {
+    gap: 8px;
+  }
+
+  .tf-task-label {
+    gap: 10px;
+  }
+
+  .tf-progress-info {
+    font-size: 0.85rem;
+  }
+}
+
+/* ================================
+   CELULARES PEQUENOS
+================================ */
+
+@media (max-width: 380px) {
+  .tf-page {
+    padding: 14px 10px;
+  }
+
+  .tf-task-panel,
+  .tf-create-project {
+    padding: 14px;
+  }
+
+  .tf-stat-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 21px;
+  }
+
+  .tf-stat-card strong {
+    font-size: 1.45rem;
+  }
+
+  .tf-button {
+    padding: 10px 12px;
+    white-space: normal;
+  }
+}

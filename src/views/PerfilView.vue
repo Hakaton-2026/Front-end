@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import '@/assets/style-telas/perfil.css'
+import AcessQrCode from '@/components/AcessQrCode.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -51,6 +52,13 @@ async function sair() {
   authStore.logout()
   await router.replace({ name: 'login' })
 }
+
+const QrCodeAberto = ref(false)
+
+function handleQrCode() {
+  QrCodeAberto.value = !QrCodeAberto.value
+}
+
 </script>
 
 <template>
@@ -107,6 +115,13 @@ async function sair() {
         </span>
       </button>
 
+      <button @click="handleQrCode" class="alternar-tema">
+        <ion-icon name="qr-code-outline"></ion-icon>
+        <span>Abrir QR Code</span>
+      </button>
+
+      <AcessQrCode v-if="QrCodeAberto"/>
+
       <button
         type="button"
         class="opcao-item"
@@ -120,6 +135,39 @@ async function sair() {
 </template>
 
 <style scoped>
+
+.opcao-acessibilidade {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  text-align: left;
+}
+
+.opcao-acessibilidade > ion-icon {
+  flex-shrink: 0;
+  font-size: 1.4rem;
+  color: var(--cor-primaria);
+}
+
+.texto-acessibilidade {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.texto-acessibilidade strong {
+  color: var(--cor-texto);
+}
+
+.texto-acessibilidade small {
+  color: var(--cor-texto-suave);
+  font-size: 0.85rem;
+}
+
 .opcao-item {
   width: 100%;
   display: flex;
