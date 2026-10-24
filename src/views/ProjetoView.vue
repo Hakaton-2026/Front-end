@@ -2,12 +2,13 @@
   <main class="projetos-container">
     <header class="cabecalho">
       <div>
+        <span class="sobretitulo">NEXOS / ORGANIZAÇÃO</span>
         <h1>Meus projetos</h1>
-        <p>Gerencie os projetos do Nexos.</p>
+        <p>Organize seus projetos, participantes e atividades.</p>
       </div>
 
       <button class="btn btn-principal" @click="abrirFormulario()">
-        Novo projeto
+        + Novo projeto
       </button>
     </header>
 
@@ -25,7 +26,7 @@
     <section v-else>
       <div v-if="projetos.length === 0" class="estado vazio">
         <h2>Nenhum projeto encontrado</h2>
-        <p>Cadastre seu primeiro projeto para começar.</p>
+        <p>Crie seu primeiro projeto para começar.</p>
         <button class="btn btn-principal" @click="abrirFormulario()">
           Criar projeto
         </button>
@@ -36,12 +37,18 @@
           v-for="projeto in projetos"
           :key="projeto.id"
           class="projeto-card"
+          role="button"
+          tabindex="0"
+          :aria-label="`Abrir projeto ${projeto.nome}`"
+          @click="abrirDetalhesProjeto(projeto)"
+          @keydown.enter.prevent="abrirDetalhesProjeto(projeto)"
+          @keydown.space.prevent="abrirDetalhesProjeto(projeto)"
         >
           <div class="projeto-conteudo">
             <div class="projeto-titulo">
               <h2>{{ projeto.nome }}</h2>
+
               <span
-                v-if="projeto.meu_papel"
                 class="selo"
                 :class="`selo-${projeto.meu_papel}`"
               >
@@ -51,50 +58,70 @@
 
             <p>{{ projeto.descricao || 'Sem descrição.' }}</p>
 
-            <small v-if="!ehProprietario(projeto) && projeto.proprietario">
-              Compartilhado por {{ nomeUsuario(projeto.proprietario) }}
-            </small>
-            <small v-else-if="projeto.total_participantes">
-              {{ textoParticipantes(projeto.total_participantes) }}
+            <small v-if="projeto.proprietario">
+              Proprietário: {{ nomeUsuario(projeto.proprietario) }}
             </small>
 
-            <small v-if="projeto.id">
-              ID: {{ projeto.id }}
+            <small>
+              {{ textoParticipantes(projeto.total_participantes || 0) }}
             </small>
           </div>
 
           <div class="acoes">
             <button
-              v-if="ehProprietario(projeto)"
+              type="button"
               class="btn btn-secundario"
-              @click="abrirFormulario(projeto)"
+              @click.stop="abrirMateriaisProjeto(projeto)"
             >
-              Compartilhar
+              Materiais
+            </button>
+
+            <button
+              v-if="ehProprietario(projeto)"
+              type="button"
+              class="btn btn-secundario"
+              @click.stop="abrirFormulario(projeto)"
+            >
+              Participantes
             </button>
 
             <button
               v-if="podeEditar(projeto)"
+              type="button"
               class="btn btn-secundario"
-              @click="abrirFormulario(projeto)"
+              @click.stop="abrirFormulario(projeto)"
             >
               Editar
             </button>
 
             <button
               v-if="ehProprietario(projeto)"
+              type="button"
               class="btn btn-perigo"
               :disabled="excluindoId === projeto.id"
-              @click="excluirProjeto(projeto)"
+              @click.stop="excluirProjeto(projeto)"
             >
               {{ excluindoId === projeto.id ? 'Excluindo...' : 'Excluir' }}
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-abrir"
+              @click.stop="abrirDetalhesProjeto(projeto)"
+            >
+              Abrir projeto →
             </button>
           </div>
         </article>
       </div>
     </section>
 
-    <!-- Criar / editar projeto (inclui pessoas e permissões) -->
-    <div v-if="formularioAberto" class="modal-fundo" @click.self="fecharFormulario">
+    <!-- Modal de criação e edição do projeto -->
+    <div
+      v-if="formularioAberto"
+      class="modal-fundo"
+      @click.self="fecharFormulario"
+    >
       <section
         class="modal"
         :class="{ 'modal-largo': mostrarPessoas }"
@@ -102,94 +129,136 @@
         aria-modal="true"
         aria-labelledby="titulo-formulario"
       >
-        <h2 id="titulo-formulario">
-          {{ formulario.id ? 'Editar projeto' : 'Novo projeto' }}
-        </h2>
+        <header class="modal-cabecalho">
+          <div>
+            <span class="sobretitulo">
+              {{ formulario.id ? 'CONFIGURAÇÕES' : 'NOVO PROJETO' }}
+            </span>
+
+            <h2 id="titulo-formulario">
+              {{ formulario.id ? 'Editar projeto' : 'Criar projeto' }}
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            class="btn-fechar"
+            aria-label="Fechar"
+            @click="fecharFormulario"
+          >
+            ×
+          </button>
+        </header>
 
         <form @submit.prevent="salvarProjeto">
-          <label for="nome">Nome do projeto</label>
+          <label for="nome-projeto">Nome do projeto *</label>
+
           <input
-            id="nome"
+            id="nome-projeto"
             v-model.trim="formulario.nome"
             type="text"
-            maxlength="150"
+            maxlength="45"
             required
-            placeholder="Digite o nome do projeto"
+            placeholder="Nome do projeto"
           />
 
-          <label for="descricao">Descrição</label>
+          <label for="descricao-projeto">Descrição</label>
+
           <textarea
-            id="descricao"
+            id="descricao-projeto"
             v-model.trim="formulario.descricao"
+            maxlength="255"
             rows="4"
-            placeholder="Descreva o projeto"
+            placeholder="Descreva o objetivo do projeto"
           />
 
           <p v-if="erroFormulario" class="mensagem erro">
             {{ erroFormulario }}
           </p>
 
-          <!-- Pessoas e permissões (somente proprietário) -->
-          <section v-if="mostrarPessoas" class="bloco-pessoas">
-            <h3 class="subtitulo">Pessoas com acesso</h3>
+          <p
+            v-if="!formulario.id"
+            class="dica"
+          >
+            Depois de criar o projeto, você poderá adicionar participantes e configurar as permissões.
+          </p>
 
-            <label for="busca-usuario">Adicionar pessoa</label>
+          <!-- Gerenciamento de participantes: somente proprietário -->
+          <section v-if="mostrarPessoas" class="bloco-pessoas">
+            <h3>Participantes do projeto</h3>
+
+            <label for="busca-usuario">Buscar usuário</label>
+
             <input
               id="busca-usuario"
               v-model="termoBusca"
               type="search"
               autocomplete="off"
-              placeholder="Busque por nome ou e-mail"
+              placeholder="Nome ou e-mail"
               :disabled="Boolean(usuarioSelecionado)"
               @keydown.enter.prevent
             />
 
-            <ul v-if="resultadosBusca.length" class="lista-resultados">
-              <li v-for="usuario in resultadosBusca" :key="usuario.id">
+            <ul
+              v-if="resultadosBusca.length"
+              class="lista-resultados"
+            >
+              <li
+                v-for="usuario in resultadosBusca"
+                :key="usuario.id"
+              >
                 <button
                   type="button"
                   class="item-usuario"
                   @click="selecionarUsuario(usuario)"
                 >
-                  <span class="avatar">{{ iniciais(usuario) }}</span>
+                  <span class="avatar">
+                    {{ iniciais(usuario) }}
+                  </span>
+
                   <span class="usuario-dados">
                     <strong>{{ nomeUsuario(usuario) }}</strong>
-                    <small v-if="usuario.name">{{ usuario.email }}</small>
+                    <small>{{ usuario.email }}</small>
                   </span>
                 </button>
               </li>
             </ul>
 
-            <p v-else-if="buscando" class="dica">Buscando...</p>
-            <p v-else-if="buscaConcluida && termoBusca.trim().length >= 2" class="dica">
+            <p v-else-if="buscando" class="dica">
+              Buscando usuários...
+            </p>
+
+            <p
+              v-else-if="buscaConcluida && termoBusca.trim().length >= 2"
+              class="dica"
+            >
               Nenhum usuário encontrado.
             </p>
 
-            <div v-if="usuarioSelecionado" class="selecionado">
+            <div v-if="usuarioSelecionado" class="usuario-selecionado">
               <div class="item-usuario estatico">
-                <span class="avatar">{{ iniciais(usuarioSelecionado) }}</span>
+                <span class="avatar">
+                  {{ iniciais(usuarioSelecionado) }}
+                </span>
+
                 <span class="usuario-dados">
                   <strong>{{ nomeUsuario(usuarioSelecionado) }}</strong>
-                  <small v-if="usuarioSelecionado.name">
-                    {{ usuarioSelecionado.email }}
-                  </small>
+                  <small>{{ usuarioSelecionado.email }}</small>
                 </span>
               </div>
 
-              <label class="rotulo-papel" for="papel-novo">Permissão</label>
+              <label for="papel-novo">Permissão</label>
+
               <select id="papel-novo" v-model="papelNovo">
-                <option
-                  v-for="papel in PAPEIS_COMPARTILHAMENTO"
-                  :key="papel.valor"
-                  :value="papel.valor"
-                >
-                  {{ papel.rotulo }}
-                </option>
+                <option value="visualizador">Visualizador</option>
+                <option value="editor">Editor</option>
               </select>
 
-              <p class="dica">{{ descricaoPapel(papelNovo) }}</p>
+              <p class="dica">
+                {{ descricaoPapel(papelNovo) }}
+              </p>
 
-              <div class="acoes modal-acoes">
+              <div class="acoes">
                 <button
                   type="button"
                   class="btn btn-secundario"
@@ -205,7 +274,7 @@
                   :disabled="adicionando"
                   @click="adicionarPessoa"
                 >
-                  {{ adicionando ? 'Adicionando...' : 'Adicionar' }}
+                  {{ adicionando ? 'Adicionando...' : 'Adicionar participante' }}
                 </button>
               </div>
             </div>
@@ -214,35 +283,63 @@
               {{ erroAdicionar }}
             </p>
 
-            <p v-if="carregandoMembros" class="dica">Carregando participantes...</p>
+            <p v-if="carregandoMembros" class="dica">
+              Carregando participantes...
+            </p>
 
-            <div v-else-if="erroMembros" class="mensagem erro">
+            <p v-else-if="erroMembros" class="mensagem erro">
               {{ erroMembros }}
-              <button type="button" class="btn btn-secundario" @click="carregarMembros">
+              <button
+                type="button"
+                class="btn btn-secundario"
+                @click="carregarMembros"
+              >
                 Tentar novamente
               </button>
-            </div>
+            </p>
 
             <ul v-else class="lista-membros">
-              <li v-if="projetoAtual?.proprietario" class="membro">
+              <li
+                v-if="projetoAtual?.proprietario"
+                class="membro"
+              >
                 <div class="item-usuario estatico">
-                  <span class="avatar">{{ iniciais(projetoAtual.proprietario) }}</span>
+                  <span class="avatar">
+                    {{ iniciais(projetoAtual.proprietario) }}
+                  </span>
+
                   <span class="usuario-dados">
-                    <strong>{{ nomeUsuario(projetoAtual.proprietario) }}</strong>
-                    <small v-if="projetoAtual.proprietario.name">
+                    <strong>
+                      {{ nomeUsuario(projetoAtual.proprietario) }}
+                    </strong>
+
+                    <small>
                       {{ projetoAtual.proprietario.email }}
                     </small>
                   </span>
                 </div>
-                <span class="selo selo-proprietario">Proprietário</span>
+
+                <span class="selo selo-proprietario">
+                  Proprietário
+                </span>
               </li>
 
-              <li v-for="pessoa in pessoas" :key="pessoa.id" class="membro">
+              <li
+                v-for="pessoa in membros"
+                :key="pessoa.id"
+                class="membro"
+              >
                 <div class="item-usuario estatico">
-                  <span class="avatar">{{ iniciais(pessoa.usuario) }}</span>
+                  <span class="avatar">
+                    {{ iniciais(pessoa.usuario) }}
+                  </span>
+
                   <span class="usuario-dados">
-                    <strong>{{ nomeUsuario(pessoa.usuario) }}</strong>
-                    <small v-if="pessoa.usuario.name">{{ pessoa.usuario.email }}</small>
+                    <strong>
+                      {{ nomeUsuario(pessoa.usuario) }}
+                    </strong>
+
+                    <small>{{ pessoa.usuario.email }}</small>
                   </span>
                 </div>
 
@@ -253,13 +350,8 @@
                     :aria-label="`Permissão de ${nomeUsuario(pessoa.usuario)}`"
                     @change="alterarPapel(pessoa, $event)"
                   >
-                    <option
-                      v-for="papel in PAPEIS_COMPARTILHAMENTO"
-                      :key="papel.valor"
-                      :value="papel.valor"
-                    >
-                      {{ papel.rotulo }}
-                    </option>
+                    <option value="visualizador">Visualizador</option>
+                    <option value="editor">Editor</option>
                   </select>
 
                   <button
@@ -268,22 +360,18 @@
                     :disabled="removendoMembroId === pessoa.id"
                     @click="removerPessoa(pessoa)"
                   >
-                    {{ removendoMembroId === pessoa.id ? 'Removendo...' : 'Remover' }}
+                    {{
+                      removendoMembroId === pessoa.id
+                        ? 'Removendo...'
+                        : 'Remover'
+                    }}
                   </button>
                 </div>
-              </li>
-
-              <li v-if="pessoas.length === 0" class="dica">
-                {{
-                  formulario.id
-                    ? 'Ninguém além de você tem acesso a este projeto.'
-                    : 'Nenhuma pessoa adicionada. Você será o proprietário do projeto.'
-                }}
               </li>
             </ul>
           </section>
 
-          <div class="acoes modal-acoes">
+          <footer class="modal-acoes">
             <button
               type="button"
               class="btn btn-secundario"
@@ -298,10 +386,140 @@
               class="btn btn-principal"
               :disabled="salvando"
             >
-              {{ salvando ? 'Salvando...' : 'Salvar' }}
+              {{ salvando ? 'Salvando...' : 'Salvar projeto' }}
             </button>
-          </div>
+          </footer>
         </form>
+      </section>
+    </div>
+
+    <!-- Modal de materiais de apoio do projeto -->
+    <div
+      v-if="modalMateriaisAberto"
+      class="modal-fundo"
+      @click.self="fecharModalMateriais"
+    >
+      <section
+        class="modal modal-materiais"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-materiais"
+      >
+        <header class="modal-cabecalho">
+          <div>
+            <span class="sobretitulo">RECURSOS DO PROJETO</span>
+            <h2 id="titulo-materiais">Materiais de apoio</h2>
+            <p>{{ projetoMateriaisAtual?.nome }}</p>
+          </div>
+
+          <button
+            type="button"
+            class="btn-fechar"
+            aria-label="Fechar"
+            @click="fecharModalMateriais"
+          >
+            ×
+          </button>
+        </header>
+
+        <p v-if="erroMateriaisProjeto" class="mensagem erro">
+          {{ erroMateriaisProjeto }}
+        </p>
+
+        <p v-if="carregandoMateriaisProjeto" class="dica">
+          Carregando materiais...
+        </p>
+
+        <form
+          v-if="podeEditar(projetoMateriaisAtual || {})"
+          class="form-material"
+          @submit.prevent="adicionarMaterialProjeto"
+        >
+          <label for="material-titulo">Título *</label>
+
+          <input
+            id="material-titulo"
+            v-model.trim="formMaterialProjeto.titulo"
+            maxlength="100"
+            required
+            placeholder="Documento de requisitos"
+          />
+
+          <label for="material-url">Link *</label>
+
+          <input
+            id="material-url"
+            v-model.trim="formMaterialProjeto.url"
+            type="url"
+            maxlength="500"
+            required
+            placeholder="https://..."
+          />
+
+          <label for="material-descricao">Descrição</label>
+
+          <textarea
+            id="material-descricao"
+            v-model.trim="formMaterialProjeto.descricao"
+            maxlength="255"
+            rows="2"
+            placeholder="Descrição opcional"
+          />
+
+          <button
+            type="submit"
+            class="btn btn-principal"
+            :disabled="salvandoMaterialProjeto"
+          >
+            {{
+              salvandoMaterialProjeto
+                ? 'Salvando...'
+                : 'Adicionar material'
+            }}
+          </button>
+        </form>
+
+        <ul
+          v-if="materiaisProjeto.length"
+          class="lista-materiais"
+        >
+          <li
+            v-for="material in materiaisProjeto"
+            :key="material.id"
+          >
+            <div class="material-info">
+              <a
+                :href="material.url"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ material.titulo }}
+              </a>
+
+              <p v-if="material.descricao">
+                {{ material.descricao }}
+              </p>
+
+              <small>{{ material.url }}</small>
+            </div>
+
+            <button
+              v-if="podeEditar(projetoMateriaisAtual || {})"
+              type="button"
+              class="btn btn-perigo btn-pequeno"
+              @click="excluirMaterialProjeto(material)"
+            >
+              Excluir
+            </button>
+          </li>
+        </ul>
+
+        <p
+          v-else-if="!carregandoMateriaisProjeto"
+          class="dica"
+        >
+          Nenhum material cadastrado.
+        </p>
       </section>
     </div>
   </main>
@@ -309,60 +527,31 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import apiClient from '@/api/config'
+import { useRouter } from 'vue-router'
 import projetosApi from '@/api/projetosApi'
 import usuariosApi from '@/api/usuariosApi'
+import tarefasApi from '@/api/tarefasApi'
 import { useToastStore } from '@/stores/toast'
 
+const router = useRouter()
 const toast = useToastStore()
-
-const ROTULOS_PAPEL = {
-  proprietario: 'Proprietário',
-  editor: 'Editor',
-  visualizador: 'Visualizador',
-}
-
-// Papéis que o proprietário pode conceder a outras pessoas.
-const PAPEIS_COMPARTILHAMENTO = [
-  {
-    valor: 'visualizador',
-    rotulo: 'Visualizador',
-    descricao: 'Pode ver o projeto, mas não pode alterá-lo.',
-  },
-  {
-    valor: 'editor',
-    rotulo: 'Editor',
-    descricao: 'Pode ver e editar o projeto.',
-  },
-]
 
 const projetos = ref([])
 const loading = ref(false)
 const salvando = ref(false)
 const excluindoId = ref(null)
 const error = ref('')
-const erroFormulario = ref('')
-const formularioAberto = ref(false)
 
+const formularioAberto = ref(false)
+const erroFormulario = ref('')
 const formulario = ref({
   id: null,
   nome: '',
   descricao: '',
 })
 
-// ------------------------------------------------------------
-// Pessoas e permissões
-// ------------------------------------------------------------
-
-// Projeto aberto no modal (null ao criar um projeto novo).
 const projetoAtual = ref(null)
-
-// Participantes já salvos no servidor (projeto existente).
 const membros = ref([])
-
-// Pessoas escolhidas antes de o projeto existir; são adicionadas ao salvar.
-const pendentes = ref([])
-
 const carregandoMembros = ref(false)
 const erroMembros = ref('')
 
@@ -374,85 +563,78 @@ const usuarioSelecionado = ref(null)
 const papelNovo = ref('visualizador')
 const adicionando = ref(false)
 const erroAdicionar = ref('')
-
 const atualizandoMembroId = ref(null)
 const removendoMembroId = ref(null)
 
-// Quem pode gerenciar pessoas: quem está criando ou o proprietário.
-const mostrarPessoas = computed(
-  () =>
-    !formulario.value.id ||
-    Boolean(projetoAtual.value && ehProprietario(projetoAtual.value)),
-)
+const modalMateriaisAberto = ref(false)
+const projetoMateriaisAtual = ref(null)
+const materiaisProjeto = ref([])
+const carregandoMateriaisProjeto = ref(false)
+const salvandoMaterialProjeto = ref(false)
+const erroMateriaisProjeto = ref('')
+const formMaterialProjeto = ref({
+  titulo: '',
+  url: '',
+  descricao: '',
+})
 
-const pessoas = computed(() =>
-  formulario.value.id ? membros.value : pendentes.value,
+const mostrarPessoas = computed(() =>
+  Boolean(
+    formulario.value.id &&
+    projetoAtual.value?.meu_papel === 'proprietario',
+  ),
 )
 
 let temporizadorBusca = null
-let buscaAtual = 0
+let idBusca = 0
 
 function extrairLista(data) {
-  if (Array.isArray(data)) {
-    return data
-  }
-
-  if (Array.isArray(data?.results)) {
-    return data.results
-  }
-
-  if (Array.isArray(data?.projetos)) {
-    return data.projetos
-  }
-
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.results)) return data.results
+  if (Array.isArray(data?.projetos)) return data.projetos
   return []
 }
 
-function mensagemErro(err, mensagemPadrao) {
-  const dados = err.response?.data
+function mensagemErro(err, fallback) {
+  const dados = err?.response?.data
 
-  if (typeof dados?.detail === 'string') {
-    return dados.detail
+  if (typeof dados === 'string') return dados
+  if (typeof dados?.detail === 'string') return dados.detail
+  if (typeof dados?.mensagem === 'string') return dados.mensagem
+
+  if (dados && typeof dados === 'object') {
+    const erros = Object.entries(dados).map(([campo, valor]) => {
+      return `${campo}: ${
+        Array.isArray(valor) ? valor.join(', ') : String(valor)
+      }`
+    })
+
+    if (erros.length) return erros.join('\n')
   }
 
-  if (typeof dados?.mensagem === 'string') {
-    return dados.mensagem
-  }
-
-  if (typeof dados === 'object' && dados !== null) {
-    const campoComErro = Object.values(dados).find(
-      (valor) => Array.isArray(valor) && valor.length > 0,
-    )
-
-    if (campoComErro) {
-      return String(campoComErro[0])
-    }
-  }
-
-  return err.mensagem || mensagemPadrao
+  return err?.message || fallback
 }
 
-// ------------------------------------------------------------
-// Permissões e textos
-// ------------------------------------------------------------
-
 function ehProprietario(projeto) {
-  return projeto.meu_papel === 'proprietario'
+  return projeto?.meu_papel === 'proprietario'
 }
 
 function podeEditar(projeto) {
-  return ['proprietario', 'editor'].includes(projeto.meu_papel)
+  return ['proprietario', 'editor'].includes(projeto?.meu_papel)
 }
 
 function rotuloPapel(papel) {
-  return ROTULOS_PAPEL[papel] || papel
+  return {
+    proprietario: 'Proprietário',
+    editor: 'Editor',
+    visualizador: 'Visualizador',
+  }[papel] || 'Participante'
 }
 
 function descricaoPapel(papel) {
-  return (
-    PAPEIS_COMPARTILHAMENTO.find((item) => item.valor === papel)?.descricao ||
-    ''
-  )
+  return papel === 'editor'
+    ? 'Pode consultar e editar o conteúdo do projeto.'
+    : 'Pode consultar o conteúdo do projeto, sem editá-lo.'
 }
 
 function nomeUsuario(usuario) {
@@ -460,53 +642,67 @@ function nomeUsuario(usuario) {
 }
 
 function iniciais(usuario) {
-  const base = (usuario?.name || usuario?.email || '?').trim()
-  const partes = base.split(/\s+/).filter(Boolean)
+  const partes = String(
+    usuario?.name || usuario?.email || '?',
+  ).trim().split(/\s+/).filter(Boolean)
 
-  if (partes.length >= 2) {
-    return (partes[0][0] + partes[1][0]).toUpperCase()
+  if (partes.length > 1) {
+    return `${partes[0][0]}${partes[1][0]}`.toUpperCase()
   }
 
-  return base.slice(0, 2).toUpperCase()
+  return (partes[0] || '?').slice(0, 2).toUpperCase()
 }
 
 function textoParticipantes(total) {
   return total === 1
-    ? 'Compartilhado com 1 pessoa'
-    : `Compartilhado com ${total} pessoas`
+    ? '1 participante'
+    : `${total} participantes`
 }
 
-// ------------------------------------------------------------
-// Projetos
-// ------------------------------------------------------------
+function abrirDetalhesProjeto(projeto) {
+  router.push({
+    name: 'projeto-detalhes',
+    params: { id: projeto.id },
+  })
+}
 
 async function carregarProjetos() {
   loading.value = true
   error.value = ''
 
   try {
-    const { data } = await apiClient.get('/projetos/')
+    const { data } = await projetosApi.obterTodos()
     projetos.value = extrairLista(data)
   } catch (err) {
     error.value = mensagemErro(
       err,
       'Não foi possível carregar os projetos.',
     )
-
-    console.error('Erro ao carregar projetos:', err)
   } finally {
     loading.value = false
   }
 }
 
+function limparBusca() {
+  clearTimeout(temporizadorBusca)
+  idBusca += 1
+
+  termoBusca.value = ''
+  resultadosBusca.value = []
+  buscando.value = false
+  buscaConcluida.value = false
+  usuarioSelecionado.value = null
+  papelNovo.value = 'visualizador'
+  erroAdicionar.value = ''
+}
+
 function abrirFormulario(projeto = null) {
-  reiniciarBusca()
+  limparBusca()
 
   erroFormulario.value = ''
   erroMembros.value = ''
   projetoAtual.value = projeto
   membros.value = []
-  pendentes.value = []
 
   formulario.value = projeto
     ? {
@@ -531,12 +727,9 @@ function fecharFormulario() {
   if (salvando.value || adicionando.value) return
 
   formularioAberto.value = false
-  erroFormulario.value = ''
-
-  reiniciarBusca()
+  limparBusca()
   projetoAtual.value = null
   membros.value = []
-  pendentes.value = []
 }
 
 async function salvarProjeto() {
@@ -549,27 +742,27 @@ async function salvarProjeto() {
 
   salvando.value = true
 
-  const payload = {
+  const dados = {
     nome: formulario.value.nome.trim(),
     descricao: formulario.value.descricao.trim(),
   }
 
   try {
-    if (formulario.value.id !== null) {
-      await apiClient.patch(
-        `/projetos/${formulario.value.id}/`,
-        payload,
+    if (formulario.value.id) {
+      await projetosApi.atualizarParcialmente(
+        formulario.value.id,
+        dados,
       )
+      toast.showToast('Projeto atualizado.')
     } else {
-      const { data: criado } = await apiClient.post('/projetos/', payload)
-      await adicionarPendentes(criado.id)
+      await projetosApi.criar(dados)
+      toast.showToast('Projeto criado.')
     }
 
     formularioAberto.value = false
-    reiniciarBusca()
+    limparBusca()
     projetoAtual.value = null
     membros.value = []
-    pendentes.value = []
 
     await carregarProjetos()
   } catch (err) {
@@ -577,79 +770,56 @@ async function salvarProjeto() {
       err,
       'Não foi possível salvar o projeto.',
     )
-
-    console.error('Erro ao salvar projeto:', err)
   } finally {
     salvando.value = false
   }
 }
 
 async function excluirProjeto(projeto) {
-  const confirmado = window.confirm(
-    `Deseja realmente excluir o projeto "${projeto.nome}"?`,
-  )
-
-  if (!confirmado) return
+  if (
+    !window.confirm(
+      `Deseja realmente excluir o projeto "${projeto.nome}"?`,
+    )
+  ) {
+    return
+  }
 
   excluindoId.value = projeto.id
-  error.value = ''
 
   try {
-    await apiClient.delete(`/projetos/${projeto.id}/`)
-    await carregarProjetos()
+    await projetosApi.deletar(projeto.id)
+    projetos.value = projetos.value.filter(
+      (item) => item.id !== projeto.id,
+    )
+    toast.showToast('Projeto excluído.')
   } catch (err) {
     error.value = mensagemErro(
       err,
       'Não foi possível excluir o projeto.',
     )
-
-    console.error('Erro ao excluir projeto:', err)
   } finally {
     excluindoId.value = null
   }
 }
 
-// ------------------------------------------------------------
-// Compartilhamento: abrir, buscar e listar
-// ------------------------------------------------------------
-
-function reiniciarBusca() {
-  clearTimeout(temporizadorBusca)
-  buscaAtual++
-
-  termoBusca.value = ''
-  resultadosBusca.value = []
-  buscando.value = false
-  buscaConcluida.value = false
-  usuarioSelecionado.value = null
-  papelNovo.value = 'visualizador'
-  erroAdicionar.value = ''
-}
-
 async function carregarMembros() {
-  if (!projetoAtual.value) return
+  if (!projetoAtual.value?.id) return
 
   const projetoId = projetoAtual.value.id
-
   carregandoMembros.value = true
   erroMembros.value = ''
 
   try {
     const { data } = await projetosApi.listarMembros(projetoId)
 
-    // Ignora a resposta se o modal foi fechado ou trocado de projeto.
-    if (projetoAtual.value?.id !== projetoId) return
-
-    membros.value = extrairLista(data)
+    if (projetoAtual.value?.id === projetoId) {
+      membros.value = extrairLista(data)
+    }
   } catch (err) {
-    if (projetoAtual.value?.id !== projetoId) return
-
     erroMembros.value = mensagemErro(
       err,
       'Não foi possível carregar os participantes.',
     )
-
-    console.error('Erro ao carregar participantes:', err)
   } finally {
     if (projetoAtual.value?.id === projetoId) {
       carregandoMembros.value = false
@@ -660,10 +830,9 @@ async function carregarMembros() {
 function agendarBusca(termo) {
   clearTimeout(temporizadorBusca)
 
-  // Invalida qualquer busca que ainda esteja em andamento.
-  buscaAtual++
-
   const consulta = termo.trim()
+  idBusca += 1
+  const buscaAtual = idBusca
 
   buscaConcluida.value = false
   erroAdicionar.value = ''
@@ -675,40 +844,40 @@ function agendarBusca(termo) {
   }
 
   buscando.value = true
-
-  const idDaBusca = buscaAtual
-
   temporizadorBusca = setTimeout(
-    () => executarBusca(consulta, idDaBusca),
-    350,
+    () => executarBusca(consulta, buscaAtual),
+    300,
   )
 }
 
-async function executarBusca(consulta, idDaBusca) {
+async function executarBusca(consulta, buscaAtual) {
   try {
     const { data } = await usuariosApi.buscar(consulta)
 
-    if (idDaBusca !== buscaAtual) return
+    if (buscaAtual !== idBusca) return
 
-    const idsComAcesso = new Set(
-      pessoas.value.map((pessoa) => pessoa.usuario.id),
+    const ids = new Set(
+      membros.value.map((membro) => Number(membro.usuario?.id)),
     )
+
+    if (projetoAtual.value?.proprietario?.id) {
+      ids.add(Number(projetoAtual.value.proprietario.id))
+    }
 
     resultadosBusca.value = extrairLista(data).filter(
-      (usuario) => !idsComAcesso.has(usuario.id),
+      (usuario) => !ids.has(Number(usuario.id)),
     )
   } catch (err) {
-    if (idDaBusca !== buscaAtual) return
+    if (buscaAtual !== idBusca) return
 
-    resultadosBusca.value = []
     erroAdicionar.value = mensagemErro(
       err,
       'Não foi possível buscar usuários.',
     )
 
-    console.error('Erro ao buscar usuários:', err)
+    resultadosBusca.value = []
   } finally {
-    if (idDaBusca === buscaAtual) {
+    if (buscaAtual === idBusca) {
       buscando.value = false
       buscaConcluida.value = true
     }
@@ -721,9 +890,6 @@ function selecionarUsuario(usuario) {
   usuarioSelecionado.value = usuario
   papelNovo.value = 'visualizador'
   erroAdicionar.value = ''
-
-  // Limpa o campo de busca e a lista de resultados.
-  termoBusca.value = ''
 }
 
 function limparSelecao() {
@@ -734,59 +900,8 @@ function limparSelecao() {
   erroAdicionar.value = ''
 }
 
-// ------------------------------------------------------------
-// Pessoas: adicionar, alterar permissão e remover
-//
-// Projeto novo: as alterações ficam em `pendentes` e são enviadas ao salvar.
-// Projeto existente: cada alteração é enviada ao servidor na hora.
-// ------------------------------------------------------------
-
-function sincronizarTotalParticipantes() {
-  if (projetoAtual.value) {
-    projetoAtual.value.total_participantes = membros.value.length
-  }
-}
-
-async function adicionarPendentes(projetoId) {
-  const falhas = []
-
-  for (const pendente of pendentes.value) {
-    try {
-      await projetosApi.adicionarMembro(projetoId, {
-        usuario: pendente.usuario.id,
-        papel: pendente.papel,
-      })
-    } catch (err) {
-      falhas.push(nomeUsuario(pendente.usuario))
-      console.error('Erro ao adicionar participante:', err)
-    }
-  }
-
-  if (falhas.length) {
-    toast.showToast(
-      `Projeto criado, mas não foi possível adicionar: ${falhas.join(', ')}.`,
-      'error',
-    )
-  }
-}
-
 async function adicionarPessoa() {
-  if (!usuarioSelecionado.value) return
-
-  const usuario = usuarioSelecionado.value
-
-  // Projeto ainda não existe: só guarda na lista.
-  if (!formulario.value.id) {
-    pendentes.value.push({
-      id: usuario.id,
-      usuario,
-      papel: papelNovo.value,
-    })
-
-    usuarioSelecionado.value = null
-    papelNovo.value = 'visualizador'
-    return
-  }
+  if (!formulario.value.id || !usuarioSelecionado.value) return
 
   adicionando.value = true
   erroAdicionar.value = ''
@@ -795,42 +910,33 @@ async function adicionarPessoa() {
     const { data } = await projetosApi.adicionarMembro(
       formulario.value.id,
       {
-        usuario: usuario.id,
+        usuario: usuarioSelecionado.value.id,
         papel: papelNovo.value,
       },
     )
 
     membros.value.push(data)
-    sincronizarTotalParticipantes()
-
-    toast.showToast(
-      `${nomeUsuario(data.usuario)} agora tem acesso como ${rotuloPapel(data.papel).toLowerCase()}.`,
-    )
-
     usuarioSelecionado.value = null
+    termoBusca.value = ''
     papelNovo.value = 'visualizador'
+
+    await carregarProjetos()
+    toast.showToast('Participante adicionado ao projeto.')
   } catch (err) {
     erroAdicionar.value = mensagemErro(
       err,
-      'Não foi possível adicionar a pessoa ao projeto.',
+      'Não foi possível adicionar o participante.',
     )
-
-    console.error('Erro ao adicionar participante:', err)
   } finally {
     adicionando.value = false
   }
 }
 
 async function alterarPapel(pessoa, evento) {
-  const select = evento.target
-  const novoPapel = select.value
+  const papelAnterior = pessoa.papel
+  const novoPapel = evento.target.value
 
-  if (novoPapel === pessoa.papel) return
-
-  if (!formulario.value.id) {
-    pessoa.papel = novoPapel
-    return
-  }
+  if (novoPapel === papelAnterior) return
 
   atualizandoMembroId.value = pessoa.id
 
@@ -842,56 +948,165 @@ async function alterarPapel(pessoa, evento) {
     )
 
     pessoa.papel = data.papel
-
-    toast.showToast(
-      `${nomeUsuario(pessoa.usuario)} agora é ${rotuloPapel(data.papel).toLowerCase()}.`,
-    )
+    toast.showToast('Permissão atualizada.')
   } catch (err) {
-    // Volta o seletor para o papel que continua valendo no servidor.
-    select.value = pessoa.papel
+    evento.target.value = papelAnterior
 
     toast.showToast(
       mensagemErro(err, 'Não foi possível alterar a permissão.'),
       'error',
     )
-
-    console.error('Erro ao alterar permissão:', err)
   } finally {
     atualizandoMembroId.value = null
   }
 }
 
 async function removerPessoa(pessoa) {
-  if (!formulario.value.id) {
-    pendentes.value = pendentes.value.filter((item) => item.id !== pessoa.id)
+  if (
+    !window.confirm(
+      `Remover ${nomeUsuario(pessoa.usuario)} deste projeto?`,
+    )
+  ) {
     return
   }
-
-  const confirmado = window.confirm(
-    `Remover ${nomeUsuario(pessoa.usuario)} deste projeto?`,
-  )
-
-  if (!confirmado) return
 
   removendoMembroId.value = pessoa.id
 
   try {
-    await projetosApi.removerMembro(formulario.value.id, pessoa.id)
-
-    membros.value = membros.value.filter((item) => item.id !== pessoa.id)
-    sincronizarTotalParticipantes()
-
-    toast.showToast(`${nomeUsuario(pessoa.usuario)} foi removido do projeto.`)
-  } catch (err) {
-    toast.showToast(
-      mensagemErro(err, 'Não foi possível remover a pessoa do projeto.'),
-      'error',
+    await projetosApi.removerMembro(
+      formulario.value.id,
+      pessoa.id,
     )
 
-    console.error('Erro ao remover participante:', err)
+    membros.value = membros.value.filter(
+      (item) => item.id !== pessoa.id,
+    )
+
+    await carregarProjetos()
+    toast.showToast('Participante removido.')
+  } catch (err) {
+    toast.showToast(
+      mensagemErro(err, 'Não foi possível remover o participante.'),
+      'error',
+    )
   } finally {
     removendoMembroId.value = null
   }
+}
+
+async function abrirMateriaisProjeto(projeto) {
+  projetoMateriaisAtual.value = projeto
+  materiaisProjeto.value = []
+  erroMateriaisProjeto.value = ''
+  formMaterialProjeto.value = {
+    titulo: '',
+    url: '',
+    descricao: '',
+  }
+  modalMateriaisAberto.value = true
+
+  await carregarMateriaisProjeto()
+}
+
+async function carregarMateriaisProjeto() {
+  const id = projetoMateriaisAtual.value?.id
+
+  if (!id) return
+
+  carregandoMateriaisProjeto.value = true
+  erroMateriaisProjeto.value = ''
+
+  try {
+    const { data } = await tarefasApi.listarMateriais({ projeto: id })
+    materiaisProjeto.value = extrairLista(data)
+  } catch (err) {
+    erroMateriaisProjeto.value = mensagemErro(
+      err,
+      'Não foi possível carregar os materiais.',
+    )
+  } finally {
+    carregandoMateriaisProjeto.value = false
+  }
+}
+
+async function adicionarMaterialProjeto() {
+  const projetoId = projetoMateriaisAtual.value?.id
+
+  if (!projetoId) return
+
+  if (
+    !formMaterialProjeto.value.titulo.trim() ||
+    !formMaterialProjeto.value.url.trim()
+  ) {
+    erroMateriaisProjeto.value = 'Informe o título e o link.'
+    return
+  }
+
+  salvandoMaterialProjeto.value = true
+  erroMateriaisProjeto.value = ''
+
+  try {
+    const url = new URL(formMaterialProjeto.value.url.trim())
+
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('Use um link HTTP ou HTTPS.')
+    }
+
+    await tarefasApi.criarMaterial({
+      projeto: projetoId,
+      titulo: formMaterialProjeto.value.titulo.trim(),
+      url: url.href,
+      descricao: formMaterialProjeto.value.descricao.trim(),
+    })
+
+    formMaterialProjeto.value = {
+      titulo: '',
+      url: '',
+      descricao: '',
+    }
+
+    await carregarMateriaisProjeto()
+    toast.showToast('Material adicionado.')
+  } catch (err) {
+    erroMateriaisProjeto.value = mensagemErro(
+      err,
+      err?.message || 'Não foi possível adicionar o material.',
+    )
+  } finally {
+    salvandoMaterialProjeto.value = false
+  }
+}
+
+async function excluirMaterialProjeto(material) {
+  if (
+    !window.confirm(
+      `Excluir o material "${material.titulo}"?`,
+    )
+  ) {
+    return
+  }
+
+  try {
+    await tarefasApi.removerMaterial(material.id)
+
+    materiaisProjeto.value = materiaisProjeto.value.filter(
+      (item) => item.id !== material.id,
+    )
+
+    toast.showToast('Material excluído.')
+  } catch (err) {
+    erroMateriaisProjeto.value = mensagemErro(
+      err,
+      'Não foi possível excluir o material.',
+    )
+  }
+}
+
+function fecharModalMateriais() {
+  modalMateriaisAberto.value = false
+  projetoMateriaisAtual.value = null
+  materiaisProjeto.value = []
+  erroMateriaisProjeto.value = ''
 }
 
 onMounted(carregarProjetos)
@@ -903,190 +1118,271 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .projetos-container {
-  width: min(1100px, 100%);
+  width: min(1150px, 100%);
+  min-width: 0;
   margin: 0 auto;
-  padding: 32px 24px;
-  color: var(--cor-texto, #202124);
+  padding: 30px 24px 48px;
+  box-sizing: border-box;
+  color: var(--cor-texto, #f5f5f5);
+}
+
+.projetos-container * {
+  box-sizing: border-box;
 }
 
 .cabecalho {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 28px;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+
+.sobretitulo {
+  color: var(--cor-primaria, #a855f7);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 1.3px;
 }
 
 .cabecalho h1 {
-  margin: 0 0 8px;
-  font-size: 2rem;
+  margin: 8px 0;
+  font-size: clamp(1.7rem, 3vw, 2.25rem);
 }
 
-.cabecalho p {
+.cabecalho p,
+.modal-cabecalho p {
   margin: 0;
-  color: var(--cor-texto-suave, #666);
+  color: var(--cor-texto-suave, #999);
 }
 
 .lista-projetos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+  gap: 18px;
 }
 
 .projeto-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 20px;
-  min-height: 180px;
-  padding: 22px;
-  border: 1px solid var(--cor-borda, #ddd);
-  border-radius: 12px;
-  background: var(--cor-superficie, #fff);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+  gap: 22px;
+  min-width: 0;
+  min-height: 210px;
+  padding: 21px;
+  border: 1px solid var(--cor-borda, #3a3a3a);
+  border-radius: 14px;
+  background: var(--cor-superficie, #222);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.projeto-card:hover,
+.projeto-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--cor-primaria, #a855f7);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 16%);
+  outline: none;
+}
+
+.projeto-conteudo {
+  min-width: 0;
 }
 
 .projeto-titulo {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  flex-wrap: wrap;
+  gap: 9px;
   margin-bottom: 12px;
 }
 
-.projeto-conteudo h2 {
+.projeto-titulo h2 {
+  min-width: 0;
   margin: 0;
+  font-size: 1.1rem;
   overflow-wrap: anywhere;
 }
 
 .projeto-conteudo p {
-  color: var(--cor-texto-suave, #666);
+  color: var(--cor-texto-suave, #aaa);
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .projeto-conteudo small {
   display: block;
-  margin-top: 6px;
-  color: var(--cor-texto-suave, #777);
+  margin-top: 7px;
+  color: var(--cor-texto-suave, #999);
+  overflow-wrap: anywhere;
 }
 
 .acoes {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .btn {
-  padding: 10px 15px;
-  border: 0;
-  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font: inherit;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 650;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: filter 0.18s ease, border-color 0.18s ease;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .btn-principal {
-  color: white;
-  background: var(--cor-primaria, #315efb);
+  color: #fff;
+  background: var(--cor-primaria, #7c3aed);
+}
+
+.btn-principal:hover:not(:disabled) {
+  filter: brightness(1.12);
 }
 
 .btn-secundario {
-  border: 1px solid var(--cor-borda, #ddd);
-  color: var(--cor-texto, #333);
-  background: var(--cor-superficie-hover, #e9e9e9);
+  color: var(--cor-texto, #eee);
+  border-color: var(--cor-borda, #444);
+  background: var(--cor-fundo, #171717);
+}
+
+.btn-secundario:hover {
+  border-color: var(--cor-primaria, #7c3aed);
+}
+
+.btn-abrir {
+  color: #fff;
+  background: var(--cor-primaria, #7c3aed);
 }
 
 .btn-perigo {
-  color: white;
-  background: #c62828;
+  color: #fca5a5;
+  border-color: #ef444455;
+  background: #ef444418;
 }
 
 .btn-pequeno {
-  padding: 7px 11px;
-  font-size: 0.875rem;
+  padding: 6px 9px;
+  font-size: 0.78rem;
+}
+
+.selo {
+  padding: 4px 8px;
+  border: 1px solid var(--cor-borda, #444);
+  border-radius: 30px;
+  color: var(--cor-texto-suave, #aaa);
+  background: var(--cor-fundo, #171717);
+  font-size: 0.72rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.selo-proprietario {
+  color: #c4b5fd;
+  border-color: #8b5cf655;
+  background: #8b5cf51a;
+}
+
+.selo-editor {
+  color: #93c5fd;
+  border-color: #3b82f655;
+  background: #3b82f61a;
 }
 
 .estado {
-  padding: 40px 20px;
+  padding: 36px 20px;
+  color: var(--cor-texto-suave, #999);
   text-align: center;
 }
 
 .vazio {
-  border: 1px dashed var(--cor-borda, #ccc);
-  border-radius: 12px;
+  border: 1px dashed var(--cor-borda, #444);
+  border-radius: 14px;
 }
 
 .mensagem {
-  margin: 16px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   padding: 12px 14px;
-  border-radius: 8px;
+  margin: 14px 0;
+  border-radius: 9px;
 }
 
 .erro {
-  color: #a51d1d;
-  background: #ffeded;
+  color: #fca5a5;
+  border: 1px solid #ef444455;
+  background: #ef444418;
 }
-
-/* ---------- Selos de papel ---------- */
-
-.selo {
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-  color: var(--cor-texto-suave, #666);
-  background: var(--cor-superficie-hover, #eee);
-  border: 1px solid var(--cor-borda, #ddd);
-}
-
-.selo-proprietario {
-  color: var(--cor-primaria, #315efb);
-  background: color-mix(in srgb, var(--cor-primaria, #315efb) 14%, transparent);
-  border-color: color-mix(in srgb, var(--cor-primaria, #315efb) 40%, transparent);
-}
-
-.selo-editor {
-  color: var(--cor-texto, #202124);
-}
-
-/* ---------- Modais ---------- */
 
 .modal-fundo {
   position: fixed;
-  z-index: 1000;
+  z-index: 1500;
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 20px;
-  background: rgb(0 0 0 / 50%);
+  padding: 16px;
+  overflow-y: auto;
+  background: rgb(0 0 0 / 70%);
 }
 
 .modal {
-  width: min(500px, 100%);
-  max-height: 90vh;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
-  padding: 26px;
-  border-radius: 12px;
-  background: var(--cor-superficie, #fff);
-  color: var(--cor-texto, #202124);
+  padding: 24px;
+  border: 1px solid var(--cor-borda, #444);
+  border-radius: 14px;
+  color: var(--cor-texto, #f5f5f5);
+  background: var(--cor-superficie, #222);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 25%);
 }
 
 .modal-largo {
-  width: min(620px, 100%);
+  width: min(670px, 100%);
 }
 
-.modal h2 {
-  margin-top: 0;
-  margin-bottom: 24px;
-  overflow-wrap: anywhere;
+.modal-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.modal-cabecalho h2 {
+  margin: 7px 0;
+  font-size: 1.4rem;
+}
+
+.btn-fechar {
+  flex: 0 0 auto;
+  width: 35px;
+  height: 35px;
+  border: 1px solid var(--cor-borda, #444);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .modal form {
@@ -1096,20 +1392,21 @@ onBeforeUnmount(() => {
 }
 
 .modal label {
-  margin-top: 8px;
-  font-weight: 600;
+  margin-top: 7px;
+  font-size: 0.86rem;
+  font-weight: 650;
 }
 
 .modal input,
 .modal textarea,
 .modal select {
   width: 100%;
-  box-sizing: border-box;
-  padding: 11px 12px;
-  border: 1px solid var(--cor-borda, #ccc);
-  border-radius: 7px;
-  background: var(--cor-superficie, #fff);
-  color: inherit;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda, #444);
+  border-radius: 8px;
+  color: var(--cor-texto, #f5f5f5);
+  background: var(--cor-fundo, #171717);
   font: inherit;
 }
 
@@ -1118,57 +1415,59 @@ onBeforeUnmount(() => {
 }
 
 .modal-acoes {
+  display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  gap: 9px;
+  margin-top: 17px;
 }
 
-/* ---------- Pessoas e permissões ---------- */
+.dica {
+  margin: 7px 0;
+  color: var(--cor-texto-suave, #999);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
 
 .bloco-pessoas {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--cor-borda, #ddd);
+  margin-top: 14px;
+  padding-top: 15px;
+  border-top: 1px solid var(--cor-borda, #444);
 }
 
-.subtitulo {
-  margin: 12px 0 4px;
-  font-size: 1.05rem;
-}
-
-.dica {
-  margin: 4px 0;
-  color: var(--cor-texto-suave, #666);
-  font-size: 0.9rem;
+.bloco-pessoas h3 {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .lista-resultados,
-.lista-membros {
+.lista-membros,
+.lista-materiais {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 0;
   padding: 0;
+  margin: 0;
   list-style: none;
 }
 
 .lista-resultados {
-  max-height: 220px;
+  max-height: 190px;
   overflow-y: auto;
 }
 
 .item-usuario {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--cor-borda, #ddd);
-  border-radius: 8px;
-  background: transparent;
+  padding: 9px;
+  border: 1px solid var(--cor-borda, #444);
+  border-radius: 9px;
+  background: var(--cor-fundo, #171717);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -1176,35 +1475,31 @@ onBeforeUnmount(() => {
 }
 
 .item-usuario:hover {
-  background: var(--cor-superficie-hover, #f3f3f3);
+  border-color: var(--cor-primaria, #7c3aed);
 }
 
 .item-usuario.estatico {
-  border-color: transparent;
-  padding-left: 0;
   cursor: default;
-}
-
-.item-usuario.estatico:hover {
-  background: transparent;
 }
 
 .avatar {
   display: grid;
-  flex-shrink: 0;
   place-items: center;
+  flex: 0 0 36px;
   width: 36px;
   height: 36px;
   border-radius: 50%;
   color: white;
-  background: var(--cor-primaria, #315efb);
+  background: var(--cor-primaria, #7c3aed);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .usuario-dados {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -1215,34 +1510,31 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.usuario-dados small {
-  color: var(--cor-texto-suave, #777);
+.usuario-dados strong {
+  font-size: 0.84rem;
 }
 
-.selecionado {
+.usuario-dados small {
+  color: var(--cor-texto-suave, #999);
+  font-size: 0.76rem;
+}
+
+.usuario-selecionado {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--cor-borda, #ddd);
+  border: 1px solid var(--cor-borda, #444);
   border-radius: 10px;
-}
-
-.selecionado .item-usuario.estatico {
-  padding: 0;
-}
-
-.selecionado .rotulo-papel {
-  margin-top: 4px;
 }
 
 .membro {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--cor-borda, #eee);
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--cor-borda, #333);
 }
 
 .membro:last-child {
@@ -1250,25 +1542,71 @@ onBeforeUnmount(() => {
 }
 
 .membro .item-usuario {
-  width: auto;
   flex: 1;
+  width: auto;
+  border-color: transparent;
+  padding-left: 0;
 }
 
 .membro-acoes {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
 .membro-acoes select {
   width: auto;
-  padding: 7px 10px;
+  padding: 7px;
 }
 
-@media (max-width: 600px) {
+.modal-materiais {
+  width: min(680px, 100%);
+}
+
+.form-material {
+  padding: 13px;
+  border: 1px solid var(--cor-borda, #444);
+  border-radius: 10px;
+}
+
+.lista-materiais {
+  margin-top: 15px;
+}
+
+.lista-materiais li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--cor-borda, #444);
+  border-radius: 9px;
+  background: var(--cor-fundo, #171717);
+}
+
+.material-info {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.material-info a {
+  color: #c4b5fd;
+  font-weight: 700;
+}
+
+.material-info p {
+  margin: 5px 0;
+  color: var(--cor-texto-suave, #aaa);
+}
+
+.material-info small {
+  color: var(--cor-texto-suave, #888);
+}
+
+@media (max-width: 650px) {
   .projetos-container {
-    padding: 22px 16px;
+    padding: 22px 14px 35px;
   }
 
   .cabecalho {
@@ -1276,17 +1614,21 @@ onBeforeUnmount(() => {
     flex-direction: column;
   }
 
-  .cabecalho h1 {
-    font-size: 1.6rem;
+  .projeto-card {
+    padding: 16px;
+  }
+
+  .acoes .btn {
+    flex: 1;
+  }
+
+  .modal {
+    padding: 17px;
   }
 
   .membro {
-    flex-direction: column;
     align-items: stretch;
-  }
-
-  .membro-acoes {
-    justify-content: space-between;
+    flex-direction: column;
   }
 
   .membro-acoes select {
