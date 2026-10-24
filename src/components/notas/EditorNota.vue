@@ -1,41 +1,61 @@
+
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+
 import {
   TextStyle,
   FontFamily,
   FontSize,
 } from '@tiptap/extension-text-style'
+
 import Color from '@tiptap/extension-color'
+import { useNotasStore } from '@/stores/notas'
+
+/* =====================================
+   CONFIGURAÇÕES
+===================================== */
 
 const CHAVE_TITULO = 'nexos-nota-titulo'
 const CHAVE_CONTEUDO = 'nexos-nota-conteudo'
 const CHAVE_NOTAS = 'nexos-notas'
+
 const COR_PADRAO = '#ffffff'
+const TEMPO_SALVAMENTO = 1000
+
+const notasStore = useNotasStore()
+
+/* =====================================
+   ESTADOS
+===================================== */
 
 const titulo = ref(
   localStorage.getItem(CHAVE_TITULO) || 'Minha primeira nota'
 )
-const notaAtualId = ref(
-  localStorage.getItem('nexos-nota-id') || `nota-${Date.now()}`
-)
+
+const notaId = ref(null)
 const notaFavorita = ref(false)
 
 const fonte = ref('Inter')
 const tamanhoFonte = ref('16px')
 const corTexto = ref(COR_PADRAO)
-const salvamento = ref('Salvo')
 
-// Altura do teclado virtual (px). Usada para a barra ficar acima dele no celular.
+const salvamento = ref('Salvo')
 const teclado = ref(0)
 
-/*
- * O seletor de cor só aceita #rrggbb, mas o Tiptap devolve rgb(...)
- * quando lê o HTML salvo. Esta função normaliza.
- */
+let temporizadorSalvamento = null
+let carregandoNota = false
+let salvandoNota = false
+let salvarNovamente = false
+
+/* =====================================
+   CORES E ESTILOS
+===================================== */
+
 function paraHex(cor) {
   if (!cor) return COR_PADRAO
 
@@ -50,7 +70,9 @@ function paraHex(cor) {
       '#' +
       partes
         .slice(0, 3)
-        .map((n) => Number(n).toString(16).padStart(2, '0'))
+        .map((n) =>
+          Number(n).toString(16).padStart(2, '0')
+        )
         .join('')
     )
   }
@@ -58,7 +80,6 @@ function paraHex(cor) {
   return COR_PADRAO
 }
 
-// Mantém fonte, tamanho e cor da barra iguais ao trecho onde o cursor está.
 function sincronizarEstilos(instancia) {
   const atributos = instancia.getAttributes('textStyle')
 
@@ -67,15 +88,19 @@ function sincronizarEstilos(instancia) {
   corTexto.value = paraHex(atributos.color)
 }
 
+/* =====================================
+   EDITOR TIPTAP
+===================================== */
+
 const editor = useEditor({
   extensions: [
-    // No Tiptap v3 o StarterKit já inclui o sublinhado.
     StarterKit,
     TextStyle,
     FontFamily,
     FontSize,
     Color,
     TaskList,
+
     TaskItem.configure({
       nested: true,
       HTMLAttributes: {
@@ -89,9 +114,14 @@ const editor = useEditor({
     '<h2>Minha nota</h2><p>Comece a escrever aqui...</p>',
 
   onUpdate({ editor }) {
-    localStorage.setItem(CHAVE_CONTEUDO, editor.getHTML())
-    persistirNotaAtual()
-    salvamento.value = 'Salvo automaticamente'
+    if (carregandoNota) return
+
+    localStorage.setItem(
+      CHAVE_CONTEUDO,
+      editor.getHTML()
+    )
+
+    agendarSalvamento()
   },
 
   onSelectionUpdate({ editor }) {
@@ -99,119 +129,455 @@ const editor = useEditor({
   },
 })
 
-function persistirNotaAtual() {
-  const conteudoAtual = editor.value?.getHTML() || localStorage.getItem(CHAVE_CONTEUDO) || ''
-  const notaAtual = {
-    id: notaAtualId.value || `nota-${Date.now()}`,
-    titulo: titulo.value.trim() || 'Sem título',
-    conteudo: conteudoAtual,
-    favorito: Boolean(notaFavorita.value),
-    atualizadoEm: Date.now(),
+/* =====================================
+   SALVAMENTO LOCAL
+===================================== */
+
+function atualizarCacheLocal(nota) {
+  if (!nota?.id) return
+
+  let lista = []
+
+  try {
+    const dados = JSON.parse(
+      localStorage.getItem(CHAVE_NOTAS) || '[]'
+    )
+
+    lista = Array.isArray(dados) ? dados : []
+  } catch (erro) {
+    console.error('Erro ao ler notas locais:', erro)
   }
 
-  localStorage.setItem(CHAVE_TITULO, titulo.value)
-  localStorage.setItem(CHAVE_CONTEUDO, conteudoAtual)
-  localStorage.setItem('nexos-nota-id', notaAtual.id)
-
-  const notasSalvas = JSON.parse(localStorage.getItem(CHAVE_NOTAS) || '[]')
-  const lista = Array.isArray(notasSalvas) ? notasSalvas : []
-  const indice = lista.findIndex((nota) => nota.id === notaAtual.id)
+  const indice = lista.findIndex(
+    (item) => String(item.id) === String(nota.id)
+  )
 
   if (indice >= 0) {
-    lista[indice] = { ...lista[indice], ...notaAtual }
+    lista[indice] = {
+      ...lista[indice],
+      ...nota,
+    }
   } else {
-    lista.unshift(notaAtual)
+    lista.unshift(nota)
   }
 
-  localStorage.setItem(CHAVE_NOTAS, JSON.stringify(lista))
-  window.dispatchEvent(new CustomEvent('nexos-nota-salva', { detail: notaAtual }))
-  return notaAtual
+  localStorage.setItem(
+    CHAVE_NOTAS,
+    JSON.stringify(lista)
+  )
+
+  localStorage.setItem(CHAVE_TITULO, titulo.value)
+  localStorage.setItem(
+    CHAVE_CONTEUDO,
+    editor.value?.getHTML() || ''
+  )
+
+  localStorage.setItem(
+    'nexos-nota-id',
+    String(nota.id)
+  )
+
+  window.dispatchEvent(
+    new CustomEvent('nexos-nota-salva', {
+      detail: nota,
+    })
+  )
 }
+
+/* =====================================
+   SALVAMENTO AUTOMÁTICO
+===================================== */
+
+function agendarSalvamento() {
+  if (carregandoNota) return
+
+  if (temporizadorSalvamento) {
+    clearTimeout(temporizadorSalvamento)
+  }
+
+  salvamento.value = 'Alterações pendentes'
+
+  temporizadorSalvamento = setTimeout(
+    salvarNota,
+    TEMPO_SALVAMENTO
+  )
+}
+
+async function salvarNota() {
+  temporizadorSalvamento = null
+
+  if (!editor.value) return
+
+  if (salvandoNota) {
+    salvarNovamente = true
+    return
+  }
+
+  salvandoNota = true
+  salvamento.value = 'Salvando...'
+
+  const idAntesDeSalvar = notaId.value
+
+  const dadosNota = {
+    titulo: titulo.value.trim() || 'Sem título',
+    texto: editor.value.getHTML(),
+  }
+
+  try {
+    const notaSalva = idAntesDeSalvar
+      ? await notasStore.updateNota(
+          idAntesDeSalvar,
+          dadosNota
+        )
+      : await notasStore.addNota(dadosNota)
+
+    if (!notaSalva?.id && !idAntesDeSalvar) {
+      throw new Error('A API não retornou o ID da nova nota.')
+    }
+
+    const idSalvo = notaSalva?.id ?? idAntesDeSalvar
+
+    // Evita que uma resposta antiga substitua outra nota aberta.
+    if (
+      notaId.value !== idAntesDeSalvar &&
+      notaId.value !== null
+    ) {
+      return
+    }
+
+    notaId.value = idSalvo
+
+    const notaAtualizada = {
+      ...notaSalva,
+      id: idSalvo,
+      titulo: dadosNota.titulo,
+      texto: dadosNota.texto,
+      conteudo: dadosNota.texto,
+      favorito: notaFavorita.value,
+      atualizadoEm: Date.now(),
+    }
+
+    atualizarCacheLocal(notaAtualizada)
+
+    salvamento.value = 'Salvo automaticamente'
+  } catch (erro) {
+    salvamento.value = 'Erro ao salvar'
+
+    console.error(
+      'Erro ao salvar nota automaticamente:',
+      erro
+    )
+  } finally {
+    salvandoNota = false
+
+    if (salvarNovamente) {
+      salvarNovamente = false
+      agendarSalvamento()
+    }
+  }
+}
+
+/* =====================================
+   FAVORITOS
+===================================== */
 
 function alternarFavorito() {
   notaFavorita.value = !notaFavorita.value
-  persistirNotaAtual()
-  salvamento.value = notaFavorita.value ? 'Nota marcada como favorita' : 'Favorito removido'
+
+  const id = notaId.value
+
+  if (id) {
+    let lista = []
+
+    try {
+      lista = JSON.parse(
+        localStorage.getItem(CHAVE_NOTAS) || '[]'
+      )
+    } catch {
+      lista = []
+    }
+
+    if (!Array.isArray(lista)) lista = []
+
+    lista = lista.map((nota) =>
+      String(nota.id) === String(id)
+        ? {
+            ...nota,
+            favorito: notaFavorita.value,
+            atualizadoEm: Date.now(),
+          }
+        : nota
+    )
+
+    localStorage.setItem(
+      CHAVE_NOTAS,
+      JSON.stringify(lista)
+    )
+
+    const notaAtualizada = lista.find(
+      (nota) => String(nota.id) === String(id)
+    )
+
+    if (notaAtualizada) {
+      window.dispatchEvent(
+        new CustomEvent('nexos-nota-salva', {
+          detail: notaAtualizada,
+        })
+      )
+    }
+  }
+
+  salvamento.value = notaFavorita.value
+    ? 'Nota marcada como favorita'
+    : 'Favorito removido'
 }
 
-watch(titulo, (novoTitulo) => {
-  localStorage.setItem(CHAVE_TITULO, novoTitulo)
-  persistirNotaAtual()
-  salvamento.value = 'Salvo'
-})
+/* =====================================
+   OBSERVAR TÍTULO
+===================================== */
 
-/*
- * No celular, o teclado virtual cobre elementos fixos no rodapé.
- * Medimos a área visível e levantamos a barra para ficar logo acima dele.
- */
+watch(
+  titulo,
+  (novoTitulo) => {
+    localStorage.setItem(
+      CHAVE_TITULO,
+      novoTitulo
+    )
+
+    if (carregandoNota) return
+
+    agendarSalvamento()
+  },
+  { flush: 'sync' }
+)
+
+/* =====================================
+   CARREGAR NOTA
+===================================== */
+
+function carregarNota(nota) {
+  if (!nota?.id) return
+
+  if (temporizadorSalvamento) {
+    clearTimeout(temporizadorSalvamento)
+    temporizadorSalvamento = null
+  }
+
+  carregandoNota = true
+
+  notaId.value = nota.id
+  titulo.value = nota.titulo || ''
+
+  const conteudo = nota.texto || nota.conteudo || ''
+
+  let favorita = Boolean(nota.favorito)
+
+  try {
+    const listaLocal = JSON.parse(
+      localStorage.getItem(CHAVE_NOTAS) || '[]'
+    )
+
+    if (Array.isArray(listaLocal)) {
+      const local = listaLocal.find(
+        (item) => String(item.id) === String(nota.id)
+      )
+
+      if (local) {
+        favorita = Boolean(local.favorito)
+      }
+    }
+  } catch (erro) {
+    console.error('Erro ao consultar favorito:', erro)
+  }
+
+  notaFavorita.value = favorita
+
+  editor.value?.commands.setContent(
+    conteudo,
+    false
+  )
+
+  localStorage.setItem(CHAVE_TITULO, titulo.value)
+  localStorage.setItem(CHAVE_CONTEUDO, conteudo)
+  localStorage.setItem('nexos-nota-id', String(nota.id))
+
+  carregandoNota = false
+
+  salvamento.value = 'Salvo'
+}
+
+/* =====================================
+   NOVA NOTA
+===================================== */
+
+function prepararNovaNota() {
+  if (temporizadorSalvamento) {
+    clearTimeout(temporizadorSalvamento)
+    temporizadorSalvamento = null
+  }
+
+  carregandoNota = true
+
+  notaId.value = null
+  notaFavorita.value = false
+  titulo.value = ''
+
+  editor.value?.commands.setContent('', false)
+
+  localStorage.removeItem('nexos-nota-id')
+  localStorage.setItem(CHAVE_TITULO, '')
+  localStorage.setItem(CHAVE_CONTEUDO, '')
+
+  localStorage.removeItem(
+    'nexos-nota-nova-pendente'
+  )
+
+  carregandoNota = false
+
+  salvamento.value = 'Nova nota'
+}
+
+/* =====================================
+   ABRIR NOTA PELO EVENTO
+===================================== */
+
+async function abrirNota(event) {
+  const id = event?.detail?.id
+
+  if (!id) return
+
+  let nota = notasStore.notas.find(
+    (item) => String(item.id) === String(id)
+  )
+
+  if (!nota) {
+    try {
+      await notasStore.fetchNotas()
+
+      nota = notasStore.notas.find(
+        (item) => String(item.id) === String(id)
+      )
+    } catch (erro) {
+      console.error(
+        'Erro ao carregar nota para edição:',
+        erro
+      )
+    }
+  }
+
+  if (nota) {
+    carregarNota(nota)
+    return
+  }
+
+  // Compatibilidade com notas armazenadas localmente.
+  try {
+    const lista = JSON.parse(
+      localStorage.getItem(CHAVE_NOTAS) || '[]'
+    )
+
+    const notaLocal = Array.isArray(lista)
+      ? lista.find(
+          (item) => String(item.id) === String(id)
+        )
+      : null
+
+    if (notaLocal) {
+      carregarNota(notaLocal)
+    }
+  } catch (erro) {
+    console.error('Erro ao abrir nota local:', erro)
+  }
+}
+
+/* =====================================
+   TECLADO VIRTUAL
+===================================== */
+
 function atualizarTeclado() {
   const vv = window.visualViewport
 
   if (!vv) return
 
-  // Com zoom (pinça) não é teclado.
   if (vv.scale > 1.01) {
     teclado.value = 0
     return
   }
 
-  const altura = Math.round(window.innerHeight - vv.height - vv.offsetTop)
+  const altura = Math.round(
+    window.innerHeight -
+    vv.height -
+    vv.offsetTop
+  )
 
   teclado.value = altura < 80 ? 0 : altura
 }
 
-function carregarNotaExistente(notaId) {
-  const notasSalvas = JSON.parse(localStorage.getItem(CHAVE_NOTAS) || '[]')
-  const nota = Array.isArray(notasSalvas)
-    ? notasSalvas.find((item) => item.id === notaId)
-    : null
-
-  if (!nota) return
-
-  notaAtualId.value = nota.id
-  notaFavorita.value = Boolean(nota.favorito)
-  titulo.value = nota.titulo || 'Sem título'
-
-  if (editor.value) {
-    editor.value.commands.setContent(nota.conteudo || '<p>Comece a escrever aqui...</p>')
-  }
-
-  localStorage.setItem('nexos-nota-id', nota.id)
-  localStorage.setItem(CHAVE_TITULO, titulo.value)
-  localStorage.setItem(CHAVE_CONTEUDO, nota.conteudo || '')
-}
-
-function limparNotaEditor() {
-  notaAtualId.value = `nota-${Date.now()}`
-  notaFavorita.value = false
-  titulo.value = 'Nova nota'
-  localStorage.setItem('nexos-nota-id', notaAtualId.value)
-  localStorage.setItem(CHAVE_TITULO, titulo.value)
-  localStorage.setItem(CHAVE_CONTEUDO, '<p>Comece a escrever aqui...</p>')
-
-  if (editor.value) {
-    editor.value.commands.setContent('<p>Comece a escrever aqui...</p>')
-  }
-}
-
-function abrirNotaEditor(event) {
-  carregarNotaExistente(event?.detail?.id)
-}
+/* =====================================
+   CICLO DE VIDA
+===================================== */
 
 onMounted(() => {
-  window.visualViewport?.addEventListener('resize', atualizarTeclado)
-  window.visualViewport?.addEventListener('scroll', atualizarTeclado)
-  window.addEventListener('nexos-nota-nova', limparNotaEditor)
-  window.addEventListener('nexos-nota-abrir', abrirNotaEditor)
+  window.visualViewport?.addEventListener(
+    'resize',
+    atualizarTeclado
+  )
+
+  window.visualViewport?.addEventListener(
+    'scroll',
+    atualizarTeclado
+  )
+
+  window.addEventListener(
+    'nexos-nota-abrir',
+    abrirNota
+  )
+
+  window.addEventListener(
+    'nexos-nota-nova',
+    prepararNovaNota
+  )
+
+  if (
+    localStorage.getItem(
+      'nexos-nota-nova-pendente'
+    ) === 'true'
+  ) {
+    prepararNovaNota()
+  }
 })
 
 onBeforeUnmount(() => {
-  window.visualViewport?.removeEventListener('resize', atualizarTeclado)
-  window.visualViewport?.removeEventListener('scroll', atualizarTeclado)
-  window.removeEventListener('nexos-nota-nova', limparNotaEditor)
-  window.removeEventListener('nexos-nota-abrir', abrirNotaEditor)
+  if (temporizadorSalvamento) {
+    clearTimeout(temporizadorSalvamento)
+  }
+
+  window.visualViewport?.removeEventListener(
+    'resize',
+    atualizarTeclado
+  )
+
+  window.visualViewport?.removeEventListener(
+    'scroll',
+    atualizarTeclado
+  )
+
+  window.removeEventListener(
+    'nexos-nota-abrir',
+    abrirNota
+  )
+
+  window.removeEventListener(
+    'nexos-nota-nova',
+    prepararNovaNota
+  )
+
   editor.value?.destroy()
 })
+
+/* =====================================
+   FORMATAÇÃO
+===================================== */
 
 function aplicarFonte() {
   editor.value
@@ -238,14 +604,19 @@ function aplicarCor() {
 }
 
 function removerCor() {
-  editor.value?.chain().focus().unsetColor().run()
+  editor.value
+    ?.chain()
+    .focus()
+    .unsetColor()
+    .run()
+
   corTexto.value = COR_PADRAO
 }
 
-/*
- * Converte somente o item da lista em que o cursor está.
- * Os itens anteriores e posteriores continuam como lista normal.
- */
+/* =====================================
+   CHECKLIST
+===================================== */
+
 function adicionarChecklist() {
   const instancia = editor.value
 
@@ -257,8 +628,11 @@ function adicionarChecklist() {
   let nivelItem = -1
   let nivelLista = -1
 
-  // Encontra o item e a lista que contêm o cursor.
-  for (let nivel = $from.depth; nivel > 0; nivel--) {
+  for (
+    let nivel = $from.depth;
+    nivel > 0;
+    nivel--
+  ) {
     const nome = $from.node(nivel).type.name
 
     if (nome === 'listItem') {
@@ -275,9 +649,13 @@ function adicionarChecklist() {
     }
   }
 
-  // Fora de uma lista: cria um checklist normalmente.
   if (nivelItem === -1 || nivelLista === -1) {
-    instancia.chain().focus().toggleTaskList().run()
+    instancia
+      .chain()
+      .focus()
+      .toggleTaskList()
+      .run()
+
     return
   }
 
@@ -285,13 +663,16 @@ function adicionarChecklist() {
   const item = $from.node(nivelItem)
   const indiceItem = $from.index(nivelLista)
 
-  // Se a lista já for checklist, mantém o comportamento de alternância.
   if (lista.type.name === 'taskList') {
-    instancia.chain().focus().toggleTaskList().run()
+    instancia
+      .chain()
+      .focus()
+      .toggleTaskList()
+      .run()
+
     return
   }
 
-  // Guarda os itens anteriores e posteriores ao item selecionado.
   const itens = []
 
   lista.forEach((no, indice) => {
@@ -323,14 +704,18 @@ function adicionarChecklist() {
     !tipoTaskItem ||
     !tipoItemNormal
   ) {
-    console.error('Não foi possível encontrar os tipos de lista do Tiptap.')
+    console.error(
+      'Não foi possível encontrar os tipos de lista do Tiptap.'
+    )
+
     return
   }
 
-  // Converte o conteúdo do item selecionado para um item de checklist.
   const conteudos = []
 
-  item.forEach((filho) => conteudos.push(filho))
+  item.forEach((filho) => {
+    conteudos.push(filho)
+  })
 
   const novoItem = tipoTaskItem.create(
     { checked: false },
@@ -340,16 +725,21 @@ function adicionarChecklist() {
   const novosBlocos = []
 
   if (anteriores.length > 0) {
-    novosBlocos.push(tipoListaNormal.create(null, anteriores))
+    novosBlocos.push(
+      tipoListaNormal.create(null, anteriores)
+    )
   }
 
-  novosBlocos.push(tipoTaskList.create(null, [novoItem]))
+  novosBlocos.push(
+    tipoTaskList.create(null, [novoItem])
+  )
 
   if (posteriores.length > 0) {
-    novosBlocos.push(tipoListaNormal.create(null, posteriores))
+    novosBlocos.push(
+      tipoListaNormal.create(null, posteriores)
+    )
   }
 
-  // Substitui a lista original pelas listas resultantes.
   const inicioLista = $from.before(nivelLista)
   const fimLista = inicioLista + lista.nodeSize
 
@@ -363,625 +753,23 @@ function adicionarChecklist() {
   instancia.commands.focus()
 }
 
+/* =====================================
+   LISTAS
+===================================== */
+
 function alternarMarcadores() {
-  editor.value?.chain().focus().toggleBulletList().run()
+  editor.value
+    ?.chain()
+    .focus()
+    .toggleBulletList()
+    .run()
 }
 
 function alternarNumeracao() {
-  editor.value?.chain().focus().toggleOrderedList().run()
+  editor.value
+    ?.chain()
+    .focus()
+    .toggleOrderedList()
+    .run()
 }
 </script>
-
-<template>
-  <section class="editor-nota">
-    <div class="cabecalho-nota">
-      <input
-        v-model="titulo"
-        class="titulo-nota"
-        type="text"
-        placeholder="Título da nota"
-        aria-label="Título da nota"
-      />
-
-      <button
-        type="button"
-        class="botao-favorito"
-        :class="{ ativo: notaFavorita }"
-        @click="alternarFavorito"
-        :aria-pressed="notaFavorita"
-      >
-        <ion-icon :name="notaFavorita ? 'star' : 'star-outline'" aria-hidden="true"></ion-icon>
-        <span>{{ notaFavorita ? 'Favorita' : 'Favoritar' }}</span>
-      </button>
-    </div>
-
-    <p class="status-salvamento">
-      {{ salvamento }}
-    </p>
-
-    <div
-      v-if="editor"
-      class="barra-formatacao"
-      :class="{ 'com-teclado': teclado > 0 }"
-      :style="{ '--teclado': teclado + 'px' }"
-      role="toolbar"
-      aria-label="Formatação do texto"
-    >
-      <!-- Fonte e tamanho -->
-      <div class="grupo-fmt">
-        <select
-          v-model="fonte"
-          class="sel-fmt sel-fmt-fonte"
-          title="Fonte do texto"
-          aria-label="Fonte do texto"
-          @change="aplicarFonte"
-        >
-          <option value="Inter">Inter</option>
-          <option value="Arial">Arial</option>
-          <option value="Georgia">Georgia</option>
-          <option value="monospace">Monospace</option>
-        </select>
-
-        <select
-          v-model="tamanhoFonte"
-          class="sel-fmt sel-fmt-tamanho"
-          title="Tamanho da fonte"
-          aria-label="Tamanho da fonte"
-          @change="aplicarTamanho"
-        >
-          <option value="12px">12 px</option>
-          <option value="14px">14 px</option>
-          <option value="16px">16 px</option>
-          <option value="20px">20 px</option>
-          <option value="24px">24 px</option>
-          <option value="32px">32 px</option>
-        </select>
-      </div>
-
-      <!-- Estilo do texto -->
-      <div class="grupo-fmt">
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Negrito"
-          aria-label="Negrito"
-          :aria-pressed="editor.isActive('bold')"
-          :class="{ ativo: editor.isActive('bold') }"
-          @mousedown.prevent
-          @click="editor.chain().focus().toggleBold().run()"
-        >
-          <strong>B</strong>
-        </button>
-
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Itálico"
-          aria-label="Itálico"
-          :aria-pressed="editor.isActive('italic')"
-          :class="{ ativo: editor.isActive('italic') }"
-          @mousedown.prevent
-          @click="editor.chain().focus().toggleItalic().run()"
-        >
-          <em>I</em>
-        </button>
-
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Sublinhado"
-          aria-label="Sublinhado"
-          :aria-pressed="editor.isActive('underline')"
-          :class="{ ativo: editor.isActive('underline') }"
-          @mousedown.prevent
-          @click="editor.chain().focus().toggleUnderline().run()"
-        >
-          <u>U</u>
-        </button>
-      </div>
-
-      <!-- Títulos -->
-      <div class="grupo-fmt">
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Título H1"
-          aria-label="Título H1"
-          :aria-pressed="editor.isActive('heading', { level: 1 })"
-          :class="{ ativo: editor.isActive('heading', { level: 1 }) }"
-          @mousedown.prevent
-          @click="editor.chain().focus().toggleHeading({ level: 1 }).run()"
-        >
-          H1
-        </button>
-
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Título H2"
-          aria-label="Título H2"
-          :aria-pressed="editor.isActive('heading', { level: 2 })"
-          :class="{ ativo: editor.isActive('heading', { level: 2 }) }"
-          @mousedown.prevent
-          @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
-        >
-          H2
-        </button>
-      </div>
-
-      <!-- Listas -->
-      <div class="grupo-fmt">
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Lista com marcadores"
-          aria-label="Lista com marcadores"
-          :aria-pressed="editor.isActive('bulletList')"
-          :class="{ ativo: editor.isActive('bulletList') }"
-          @mousedown.prevent
-          @click="alternarMarcadores"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <circle cx="5" cy="6" r="1.2" fill="currentColor" stroke="none" />
-            <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
-            <circle cx="5" cy="18" r="1.2" fill="currentColor" stroke="none" />
-            <path d="M10 6h10M10 12h10M10 18h10" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Lista numerada"
-          aria-label="Lista numerada"
-          :aria-pressed="editor.isActive('orderedList')"
-          :class="{ ativo: editor.isActive('orderedList') }"
-          @mousedown.prevent
-          @click="alternarNumeracao"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <text x="2" y="8" font-size="7" font-weight="700" fill="currentColor" stroke="none">1</text>
-            <text x="2" y="14" font-size="7" font-weight="700" fill="currentColor" stroke="none">2</text>
-            <text x="2" y="20" font-size="7" font-weight="700" fill="currentColor" stroke="none">3</text>
-            <path d="M10 6h10M10 12h10M10 18h10" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          class="btn-fmt"
-          title="Checklist"
-          aria-label="Checklist"
-          :aria-pressed="editor.isActive('taskList')"
-          :class="{ ativo: editor.isActive('taskList') }"
-          @mousedown.prevent
-          @click="adicionarChecklist"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="4" y="4" width="16" height="16" rx="3" />
-            <path d="M8 12.5l3 3 5-6" />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Cor -->
-      <div class="grupo-fmt">
-        <label class="btn-fmt controle-cor" title="Cor do texto">
-          <span
-            class="amostra-cor"
-            :style="{ background: corTexto }"
-          ></span>
-
-          <input
-            v-model="corTexto"
-            type="color"
-            aria-label="Escolher cor do texto"
-            @change="aplicarCor"
-          />
-        </label>
-
-        <button
-          type="button"
-          class="btn-fmt btn-texto"
-          title="Voltar à cor padrão"
-          @mousedown.prevent
-          @click="removerCor"
-        >
-          Padrão
-        </button>
-      </div>
-    </div>
-
-    <EditorContent
-      :editor="editor"
-      class="area-escrita"
-    />
-  </section>
-</template>
-
-<style>
-.editor-nota {
-  width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 24px 36px 70px;
-  box-sizing: border-box;
-  color: var(--cor-texto, #eeeeee);
-}
-
-.cabecalho-nota {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.titulo-nota {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: inherit;
-  font-size: 36px;
-  font-weight: 700;
-}
-
-.botao-favorito {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--cor-borda, #383838);
-  background: transparent;
-  color: var(--cor-texto, #f5f5f5);
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.botao-favorito.ativo {
-  background: rgb(251 191 36 / 12%);
-  border-color: rgb(251 191 36 / 50%);
-  color: #fbbf24;
-}
-
-.status-salvamento {
-  color: #999;
-  font-size: 12px;
-  margin-bottom: 18px;
-}
-
-/* ===================================================== */
-/* Barra de formatação — computador: fixa no topo        */
-/* ===================================================== */
-.barra-formatacao {
-  --acento: #ff5700;
-
-  position: sticky;
-  top: 64px;
-  z-index: 100;
-
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 6px;
-
-  padding: 8px 10px;
-  margin-bottom: 22px;
-
-  background: var(--cor-superficie, var(--cor-fundo, #202020));
-  border: 1px solid var(--cor-borda, #3c3c3c);
-  border-radius: 14px;
-  box-shadow: 0 6px 24px rgb(0 0 0 / 18%);
-}
-
-/* Efeito de vidro nos navegadores que suportam */
-@supports (background: color-mix(in srgb, red 50%, blue)) and
-  (backdrop-filter: blur(1px)) {
-  .barra-formatacao {
-    background: color-mix(
-      in srgb,
-      var(--cor-superficie, var(--cor-fundo, #202020)) 86%,
-      transparent
-    );
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-  }
-}
-
-/* Grupos de botões separados por uma linha fina */
-.grupo-fmt {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  gap: 2px;
-}
-
-.grupo-fmt + .grupo-fmt {
-  padding-left: 8px;
-  border-left: 1px solid var(--cor-borda, #3c3c3c);
-}
-
-.grupo-fmt:first-child {
-  gap: 6px;
-}
-
-/* Botões */
-.btn-fmt {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  min-width: 36px;
-  height: 36px;
-  padding: 0 8px;
-  box-sizing: border-box;
-
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    transform 0.1s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.btn-fmt:hover {
-  background: color-mix(in srgb, currentColor 12%, transparent);
-}
-
-.btn-fmt:active {
-  transform: scale(0.94);
-}
-
-.btn-fmt.ativo,
-.btn-fmt.ativo:hover {
-  background: rgb(255 87 0 / 18%);
-  color: var(--acento);
-}
-
-.btn-fmt:focus-visible,
-.sel-fmt:focus-visible,
-.controle-cor:focus-within {
-  outline: 2px solid var(--acento);
-  outline-offset: 1px;
-}
-
-.btn-texto {
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 0.85;
-}
-
-/* Selects de fonte e tamanho */
-.sel-fmt {
-  height: 36px;
-  padding: 0 8px;
-  box-sizing: border-box;
-
-  border: 1px solid var(--cor-borda, #3c3c3c);
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.sel-fmt option {
-  background: var(--cor-superficie, var(--cor-fundo, #202020));
-  color: var(--cor-texto, #eeeeee);
-}
-
-.sel-fmt-fonte {
-  width: 112px;
-}
-
-.sel-fmt-tamanho {
-  width: 84px;
-}
-
-/* Seletor de cor: bolinha com a cor atual */
-.controle-cor {
-  position: relative;
-}
-
-.amostra-cor {
-  display: block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
-  box-sizing: border-box;
-}
-
-.controle-cor input[type='color'] {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-/* ===================================================== */
-/* Área de escrita                                       */
-/* ===================================================== */
-.area-escrita .tiptap p {
-  margin: 8px 0;
-}
-
-.area-escrita .tiptap h1,
-.area-escrita .tiptap h2,
-.area-escrita .tiptap h3 {
-  margin: 24px 0 12px;
-}
-
-.area-escrita .tiptap ul,
-.area-escrita .tiptap ol {
-  padding-left: 28px;
-}
-
-.area-escrita .tiptap ul[data-type='taskList'] {
-  list-style: none;
-  padding-left: 0;
-  margin-left: 0;
-}
-
-.area-escrita .tiptap ul[data-type='taskList'] li {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: 5px 0;
-  padding: 0;
-}
-
-.area-escrita .tiptap ul[data-type='taskList'] li > label {
-  flex: 0 0 auto;
-  margin: 5px 0 0;
-  user-select: none;
-}
-
-.area-escrita .tiptap ul[data-type='taskList'] li > div {
-  flex: 1;
-  min-width: 0;
-}
-
-.area-escrita .tiptap ul[data-type='taskList'] li > div > p {
-  margin: 0;
-}
-
-.area-escrita .tiptap ul[data-type='taskList'] input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  accent-color: #ff5700;
-  cursor: pointer;
-}
-
-/* ===================================================== */
-/* Celular: a barra vira o rodapé fixo da tela           */
-/* (um único bloco @media, sem regras que se sobrepõem)  */
-/* ===================================================== */
-@media (max-width: 700px) {
-  /* Espaço no fim da nota para o rodapé não cobrir o texto */
-  .editor-nota {
-    padding: 18px 16px 110px;
-  }
-
-  .titulo-nota {
-    font-size: 28px;
-  }
-
-  .area-escrita .tiptap {
-    padding-bottom: 24px;
-  }
-
-  .barra-formatacao {
-    position: fixed;
-    top: auto;
-    left: 0;
-    right: 0;
-    bottom: var(--teclado, 0px);
-    z-index: 1300;
-
-    flex-wrap: nowrap;
-    gap: 6px;
-
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-
-    margin: 0;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-
-    border: none;
-    border-top: 1px solid var(--cor-borda, #3c3c3c);
-    border-radius: 18px 18px 0 0;
-    box-shadow: 0 -6px 24px rgb(0 0 0 / 22%);
-
-    /* Rolagem horizontal sem mostrar a barra de rolagem */
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-
-    transition: bottom 0.12s ease-out;
-  }
-
-  .barra-formatacao::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Com o teclado aberto, a barra encosta nele (sem a área segura) */
-  .barra-formatacao.com-teclado {
-    padding-bottom: 8px;
-    border-radius: 0;
-  }
-
-  /* Alvos de toque maiores */
-  .btn-fmt {
-    min-width: 42px;
-    height: 42px;
-  }
-
-  /* 16px evita o zoom automático do iPhone ao tocar no select */
-  .sel-fmt {
-    height: 42px;
-    font-size: 16px;
-  }
-
-  .sel-fmt-fonte {
-    width: 124px;
-  }
-
-  .sel-fmt-tamanho {
-    width: 96px;
-  }
-
-  .grupo-fmt + .grupo-fmt {
-    padding-left: 6px;
-  }
-}
-</style>
