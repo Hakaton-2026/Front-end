@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppFooter from '@/components/AppFooter.vue'
-import ToastMessage from '@/components/ToastMessage.vue';
+import ToastMessage from './components/ToastMessage.vue';
 
 import { sidebarNotasAberta } from '@/composables/useSidebarNotas'
 import { rotasSemLayout } from './router'
@@ -37,10 +37,12 @@ function alternarMenu() {
 function fecharSidebar() {
   sidebarAberta.value = false
 }
+
 </script>
 
 <template>
   <div class="app">
+    <ToastMessage />
     <!-- Header: largura total da tela (já inclui o botão da sidebar) -->
     <AppNavbar
       v-if="comLayout"
