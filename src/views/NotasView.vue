@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import {useNotasStore} from '@/stores/notas'
 import SidebarNotas from '@/components/notas/SidebarNotas.vue'
 import EditorNota from '@/components/notas/EditorNota.vue'
 
 const CHAVE_NOTAS = 'nexos-notas'
+const notasStore = useNotasStore()
 
 const sidebarNotasAberta = ref(false)
 const secaoAtiva = ref('editor')
@@ -155,6 +157,7 @@ onMounted(() => {
   window.addEventListener('nexos-nota-salva', sincronizarNotas)
   window.addEventListener('nexos-nota-removida', removerNota)
   window.addEventListener('nexos-nota-atualizada', atualizarListaCompleta)
+  notasStore.fetchNotas()
 })
 
 onBeforeUnmount(() => {
@@ -162,6 +165,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('nexos-nota-removida', removerNota)
   window.removeEventListener('nexos-nota-atualizada', atualizarListaCompleta)
 })
+
 </script>
 
 <template>
@@ -262,6 +266,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
+    {{ notasStore.notas }}
   </main>
 </template>
 
