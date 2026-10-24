@@ -43,6 +43,7 @@ function fecharSidebar() {
 <template>
   <div class="app">
     <ToastMessage />
+    <VLibras avatar="Icaro" />
     <!-- Header: largura total da tela (já inclui o botão da sidebar) -->
     <AppNavbar
       v-if="comLayout"

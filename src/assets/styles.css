@@ -25,15 +25,15 @@
 :root[data-theme="claro"] {
   color-scheme: light;
 
-  --cor-fundo: #f8fafc;
+  --cor-fundo: #f9f7ff;
   --cor-superficie: #ffffff;
- --cor-lateral: #0f172a;
+  --cor-lateral: #1f2937;
 
-  --cor-superficie-hover: #f1f5f9;
+  --cor-superficie-hover: #f2ebff;
 
-  --cor-texto: #0f172a;
-  --cor-texto-suave: #64748b;
-  --cor-borda: #e2e8f0;
+  --cor-texto: #2c2340;
+  --cor-texto-suave: #6f5d8a;
+  --cor-borda: #eadcff;
 
   --raio: 10px;
   --largura-max: 1100px;
