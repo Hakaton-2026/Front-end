@@ -10,19 +10,25 @@ import {
   FontSize,
 } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
+import { useNotasStore } from '@/stores/notas'
 
 const CHAVE_TITULO = 'nexos-nota-titulo'
 const CHAVE_CONTEUDO = 'nexos-nota-conteudo'
 const COR_PADRAO = '#ffffff'
+const TEMPO_SALVAMENTO = 1000
+const notasStore = useNotasStore()
 
 const titulo = ref(
   localStorage.getItem(CHAVE_TITULO) || 'Minha primeira nota'
 )
+const notaId = ref(null)
 
 const fonte = ref('Inter')
 const tamanhoFonte = ref('16px')
 const corTexto = ref(COR_PADRAO)
 const salvamento = ref('Salvo')
+let temporizadorSalvamento = null
+let carregandoNota = false
 
 // Altura do teclado virtual (px). Usada para a barra ficar acima dele no celular.
 const teclado = ref(0)
@@ -85,7 +91,7 @@ const editor = useEditor({
 
   onUpdate({ editor }) {
     localStorage.setItem(CHAVE_CONTEUDO, editor.getHTML())
-    salvamento.value = 'Salvo automaticamente'
+    agendarSalvamento()
   },
 
   onSelectionUpdate({ editor }) {
@@ -95,8 +101,82 @@ const editor = useEditor({
 
 watch(titulo, (novoTitulo) => {
   localStorage.setItem(CHAVE_TITULO, novoTitulo)
+  if (carregandoNota) return
+  agendarSalvamento()
+}, { flush: 'sync' })
+
+function agendarSalvamento() {
+  if (temporizadorSalvamento) {
+    clearTimeout(temporizadorSalvamento)
+  }
+
+  salvamento.value = 'Alterações pendentes'
+  temporizadorSalvamento = setTimeout(salvarNota, TEMPO_SALVAMENTO)
+}
+
+async function salvarNota() {
+  temporizadorSalvamento = null
+
+  if (!editor.value) return
+
+  salvamento.value = 'Salvando...'
+
+  try {
+    const dadosNota = {
+      titulo: titulo.value.trim() || 'Sem título',
+      texto: editor.value.getHTML(),
+    }
+
+    const notaSalva = notaId.value
+      ? await notasStore.updateNota(notaId.value, dadosNota)
+      : await notasStore.addNota(dadosNota)
+
+    notaId.value = notaSalva?.id || notaId.value
+    salvamento.value = 'Salvo automaticamente'
+  } catch (err) {
+    salvamento.value = 'Erro ao salvar'
+    console.error('Erro ao salvar nota automaticamente:', err)
+  }
+}
+
+function carregarNota(nota) {
+  if (!nota?.id) return
+
+  carregandoNota = true
+  notaId.value = nota.id
+  titulo.value = nota.titulo || ''
+  editor.value?.commands.setContent(
+    nota.texto || nota.conteudo || '',
+    false
+  )
+  carregandoNota = false
   salvamento.value = 'Salvo'
-})
+}
+
+function prepararNovaNota() {
+  notaId.value = null
+  titulo.value = ''
+  editor.value?.commands.setContent('', false)
+  salvamento.value = 'Rascunho local'
+}
+
+async function abrirNota(event) {
+  const id = event?.detail?.id
+  if (!id) return
+
+  let nota = notasStore.notas.find((item) => item.id === id)
+
+  if (!nota) {
+    try {
+      await notasStore.fetchNotas()
+      nota = notasStore.notas.find((item) => item.id === id)
+    } catch (err) {
+      console.error('Erro ao carregar nota para edição:', err)
+    }
+  }
+
+  if (nota) carregarNota(nota)
+}
 
 /*
  * No celular, o teclado virtual cobre elementos fixos no rodapé.
@@ -121,11 +201,19 @@ function atualizarTeclado() {
 onMounted(() => {
   window.visualViewport?.addEventListener('resize', atualizarTeclado)
   window.visualViewport?.addEventListener('scroll', atualizarTeclado)
+  window.addEventListener('nexos-nota-abrir', abrirNota)
+  window.addEventListener('nexos-nota-nova', prepararNovaNota)
 })
 
 onBeforeUnmount(() => {
+  if (temporizadorSalvamento) {
+    clearTimeout(temporizadorSalvamento)
+  }
+
   window.visualViewport?.removeEventListener('resize', atualizarTeclado)
   window.visualViewport?.removeEventListener('scroll', atualizarTeclado)
+  window.removeEventListener('nexos-nota-abrir', abrirNota)
+  window.removeEventListener('nexos-nota-nova', prepararNovaNota)
   editor.value?.destroy()
 })
 
