@@ -57,6 +57,14 @@ const router = createRouter({
       component: () => import("@/views/verificarEmailView.vue"),
       meta: { titulo: "Verificar e-mail" },
     },
+
+    {
+      path: "/grupos",
+      name: "grupos",
+      component: () => import("@/views/gruposView.vue"),
+  meta: { requiresAuth: true },
+    },
+    
     {
       path: "/:pathMatch(.*)*",
       redirect: "/",
