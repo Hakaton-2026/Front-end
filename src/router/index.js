@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { NOME_SITE } from '@/config'
 import { useAuthStore } from '@/stores/auth'
+import ParticipantesProjeto from '@/components/ParticipantesProjeto.vue'
 
 const rotasPublicas = [
   'home',
@@ -39,6 +40,11 @@ const router = createRouter({
         titulo: 'Início',
       },
     },
+    {
+  path: '/participantes',
+  name: 'participantes',
+  component: ParticipantesProjeto,
+},
 
     {
       path: '/sobre',

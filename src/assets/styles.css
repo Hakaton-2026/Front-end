@@ -1,3 +1,4 @@
+
 :root,
 :root[data-theme="escuro"] {
   color-scheme: dark;
@@ -43,8 +44,8 @@
   --cor-sucesso: #16a34a;
   --cor-sucesso-texto: #fafafa;
 
-  --cor-primaria: #ff5700;
-  --cor-primaria-hover: #e64e00;
+  --cor-primaria: #A855F7;
+  --cor-primaria-hover: #a141fa;
 
   --raio: 10px;
   --largura-max: 1100px;
