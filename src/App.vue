@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import ToastMessage from '@/components/ToastMessage.vue';
 
 import { sidebarNotasAberta } from '@/composables/useSidebarNotas'
 import { rotasSemLayout } from './router'

@@ -34,8 +34,17 @@
   --cor-texto-suave: #64748b;
   --cor-borda: #e2e8f0;
 
-  --cor-primaria: #A855F7;
-  --cor-primaria-hover: #a141fa;
+  --cor-primaria: #ff5700;
+  --cor-primaria-hover: #e64e00;
+
+  --raio: 10px;
+  --largura-max: 1100px;
+  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --cor-erro: #ef4444;
+  --cor-erro-texto: #fafafa;
+  --cor-sucesso: #16a34a;
+  --cor-sucesso-texto: #fafafa;
 }
 
 * {
