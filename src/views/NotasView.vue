@@ -1,7 +1,10 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import {useNotasStore} from '@/stores/notas'
 import SidebarNotas from '@/components/notas/SidebarNotas.vue'
-import EditorNota from '@/components//notas/EditorNota.vue'
+import EditorNota from '@/components/notas/EditorNota.vue'
+
+const notasStore = useNotasStore()
 
 const sidebarNotasAberta = ref(false)
 
@@ -12,6 +15,11 @@ function alternarSidebarNotas() {
 function fecharSidebarNotas() {
   sidebarNotasAberta.value = false
 }
+
+onMounted(() => {
+  notasStore.fetchNotas()
+})
+
 </script>
 
 <template>
@@ -52,6 +60,7 @@ function fecharSidebarNotas() {
         <EditorNota />
       </section>
     </div>
+    {{ notasStore.notas }}
   </main>
 </template>
 
