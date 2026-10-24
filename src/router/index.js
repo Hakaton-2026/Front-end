@@ -5,7 +5,12 @@ import { useAuthStore } from "@/stores/auth";
 
 const rotasPublicas = ["home", "sobre", "login", "cadastro", "verificar"];
 
-const rotasSemLayout = ["login", "cadastro", "verificar"];
+const rotasSemLayout = [
+  'notas',
+  'login',
+  'cadastro',
+  'verificar',
+]
 
 const rotasSoParaVisitantes = ["login", "cadastro"];
 
@@ -62,12 +67,57 @@ const router = createRouter({
       path: "/grupos",
       name: "grupos",
       component: () => import("@/views/gruposView.vue"),
-  meta: { requiresAuth: true },
+      meta: { requiresAuth: true },
     },
     
     {
       path: "/:pathMatch(.*)*",
       redirect: "/",
+    },
+    {
+      path: '/Projetos',
+      name: 'projetos',
+      component: () => import('@/views/ProjetosView.vue'),
+      meta: { titulo: 'Projetos' },
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/',
+    },
+
+    {
+      path: '/Kanban',
+      name: 'Kanban',
+      component: () => import('@/views/KanbanView.vue'),
+      meta: { titulo: 'Meu Kanban' },
+    },
+
+    {
+      path: '/notas',
+      name: 'notas',
+      component: () => import('@/views/NotasView.vue'),
+      meta: { titulo: 'Minhas Notas' },
+    },
+
+
+    {
+      path: '/Documentos',
+      name: 'documentos',
+      component: () => import('@/views/DocumentoView.vue'),
+      meta: { titulo: 'Meus Documentos' },
+    },
+
+    {
+      path: '/Notificacao',
+      name: 'Notificacao',
+      component: () => import('@/views/NotificacaoView.vue'),
+      meta: { titulo: 'Meus Notificação' },
+    },
+
+
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/',
     },
   ],
 });

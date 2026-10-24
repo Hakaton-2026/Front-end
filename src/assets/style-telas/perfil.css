@@ -113,7 +113,7 @@
 }
 
 .interruptor.ativo {
-  background: #ff5700;
+  background: #A855F7;
 }
 
 .interruptor-circulo {
@@ -130,7 +130,7 @@
 
 /* Feedback visual para Hover e Active (Desktop e Mobile) */
 .alternar-tema:hover {
-  border-color: #ff5700;
+  border-color: #A855F7;
   background: var(--cor-superficie-hover, rgba(0, 0, 0, 0.01));
 }
 
@@ -139,7 +139,7 @@
 }
 
 .alternar-tema:focus-visible {
-  outline: 2px solid #ff5700;
+  outline: 2px solid #A855F7;
   outline-offset: 3px;
 }
 
