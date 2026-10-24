@@ -90,11 +90,34 @@ function criarNovaNota() {
   window.dispatchEvent(new CustomEvent('nexos-nota-nova'))
 }
 
+function persistirNotas(lista) {
+  const proximaLista = Array.isArray(lista) ? lista : []
+  notas.value = proximaLista
+  localStorage.setItem(CHAVE_NOTAS, JSON.stringify(proximaLista))
+}
+
 function excluirNota(notaId) {
   const lista = [...notas.value].filter((nota) => nota.id !== notaId)
-  notas.value = lista
-  localStorage.setItem(CHAVE_NOTAS, JSON.stringify(lista))
+  persistirNotas(lista)
   window.dispatchEvent(new CustomEvent('nexos-nota-removida', { detail: notaId }))
+}
+
+function alternarFavorito(notaId) {
+  const indice = notas.value.findIndex((nota) => nota.id === notaId)
+
+  if (indice === -1) return
+
+  const atual = notas.value[indice]
+  const atualizada = {
+    ...atual,
+    favorito: !Boolean(atual.favorito),
+    atualizadoEm: Date.now(),
+  }
+
+  const lista = [...notas.value]
+  lista[indice] = atualizada
+  persistirNotas(lista)
+  window.dispatchEvent(new CustomEvent('nexos-nota-salva', { detail: atualizada }))
 }
 
 function duplicarNota(notaId) {
@@ -125,14 +148,25 @@ function sincronizarNotas(event) {
   const indice = lista.findIndex((nota) => nota.id === novaNota.id)
 
   if (indice >= 0) {
-    lista[indice] = novaNota
+    lista[indice] = {
+      ...lista[indice],
+      ...novaNota,
+      favorito: Boolean(novaNota.favorito),
+      atualizadoEm: novaNota.atualizadoEm ?? Date.now(),
+    }
   } else {
-    lista.unshift(novaNota)
+    lista.unshift({
+      ...novaNota,
+      favorito: Boolean(novaNota.favorito),
+      atualizadoEm: novaNota.atualizadoEm ?? Date.now(),
+    })
   }
 
-  notas.value = lista.sort(
+  const listaOrdenada = lista.sort(
     (a, b) => (b.atualizadoEm ?? 0) - (a.atualizadoEm ?? 0)
   )
+
+  persistirNotas(listaOrdenada)
 }
 
 function removerNota(event) {
@@ -141,13 +175,12 @@ function removerNota(event) {
   if (!id) return
 
   const lista = [...notas.value].filter((nota) => nota.id !== id)
-  notas.value = lista
-
+  persistirNotas(lista)
 }
 
 function atualizarListaCompleta(event) {
   const lista = Array.isArray(event?.detail) ? event.detail : []
-  notas.value = lista
+  persistirNotas(lista)
 }
 
 onMounted(() => {
@@ -239,10 +272,14 @@ onBeforeUnmount(() => {
               </button>
 
               <div class="card-nota__acoes">
-                <button type="button" class="acao-nota" @click="duplicarNota(nota.id)">
+                <button type="button" class="acao-nota acao-nota--favorito" :class="{ 'acao-nota--favorito-ativo': nota.favorito }" @click.stop="alternarFavorito(nota.id)" :title="nota.favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'">
+                  <ion-icon :name="nota.favorito ? 'star' : 'star-outline'" aria-hidden="true"></ion-icon>
+                  <span>{{ nota.favorito ? 'Favorito' : 'Favoritar' }}</span>
+                </button>
+                <button type="button" class="acao-nota" @click.stop="duplicarNota(nota.id)">
                   Duplicar
                 </button>
-                <button type="button" class="acao-nota acao-nota--danger" @click="excluirNota(nota.id)">
+                <button type="button" class="acao-nota acao-nota--danger" @click.stop="excluirNota(nota.id)">
                   Excluir
                 </button>
               </div>
@@ -482,6 +519,19 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   padding: 8px 10px;
   cursor: pointer;
+}
+
+.acao-nota--favorito {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.acao-nota--favorito-ativo {
+  color: #fbbf24;
+  border-color: rgb(251 191 36 / 35%);
+  background: rgb(251 191 36 / 10%);
 }
 
 .acao-nota--danger {

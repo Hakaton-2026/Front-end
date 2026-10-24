@@ -13,11 +13,16 @@ import Color from '@tiptap/extension-color'
 
 const CHAVE_TITULO = 'nexos-nota-titulo'
 const CHAVE_CONTEUDO = 'nexos-nota-conteudo'
+const CHAVE_NOTAS = 'nexos-notas'
 const COR_PADRAO = '#ffffff'
 
 const titulo = ref(
   localStorage.getItem(CHAVE_TITULO) || 'Minha primeira nota'
 )
+const notaAtualId = ref(
+  localStorage.getItem('nexos-nota-id') || `nota-${Date.now()}`
+)
+const notaFavorita = ref(false)
 
 const fonte = ref('Inter')
 const tamanhoFonte = ref('16px')
@@ -85,6 +90,7 @@ const editor = useEditor({
 
   onUpdate({ editor }) {
     localStorage.setItem(CHAVE_CONTEUDO, editor.getHTML())
+    persistirNotaAtual()
     salvamento.value = 'Salvo automaticamente'
   },
 
@@ -93,8 +99,44 @@ const editor = useEditor({
   },
 })
 
+function persistirNotaAtual() {
+  const conteudoAtual = editor.value?.getHTML() || localStorage.getItem(CHAVE_CONTEUDO) || ''
+  const notaAtual = {
+    id: notaAtualId.value || `nota-${Date.now()}`,
+    titulo: titulo.value.trim() || 'Sem título',
+    conteudo: conteudoAtual,
+    favorito: Boolean(notaFavorita.value),
+    atualizadoEm: Date.now(),
+  }
+
+  localStorage.setItem(CHAVE_TITULO, titulo.value)
+  localStorage.setItem(CHAVE_CONTEUDO, conteudoAtual)
+  localStorage.setItem('nexos-nota-id', notaAtual.id)
+
+  const notasSalvas = JSON.parse(localStorage.getItem(CHAVE_NOTAS) || '[]')
+  const lista = Array.isArray(notasSalvas) ? notasSalvas : []
+  const indice = lista.findIndex((nota) => nota.id === notaAtual.id)
+
+  if (indice >= 0) {
+    lista[indice] = { ...lista[indice], ...notaAtual }
+  } else {
+    lista.unshift(notaAtual)
+  }
+
+  localStorage.setItem(CHAVE_NOTAS, JSON.stringify(lista))
+  window.dispatchEvent(new CustomEvent('nexos-nota-salva', { detail: notaAtual }))
+  return notaAtual
+}
+
+function alternarFavorito() {
+  notaFavorita.value = !notaFavorita.value
+  persistirNotaAtual()
+  salvamento.value = notaFavorita.value ? 'Nota marcada como favorita' : 'Favorito removido'
+}
+
 watch(titulo, (novoTitulo) => {
   localStorage.setItem(CHAVE_TITULO, novoTitulo)
+  persistirNotaAtual()
   salvamento.value = 'Salvo'
 })
 
@@ -118,14 +160,56 @@ function atualizarTeclado() {
   teclado.value = altura < 80 ? 0 : altura
 }
 
+function carregarNotaExistente(notaId) {
+  const notasSalvas = JSON.parse(localStorage.getItem(CHAVE_NOTAS) || '[]')
+  const nota = Array.isArray(notasSalvas)
+    ? notasSalvas.find((item) => item.id === notaId)
+    : null
+
+  if (!nota) return
+
+  notaAtualId.value = nota.id
+  notaFavorita.value = Boolean(nota.favorito)
+  titulo.value = nota.titulo || 'Sem título'
+
+  if (editor.value) {
+    editor.value.commands.setContent(nota.conteudo || '<p>Comece a escrever aqui...</p>')
+  }
+
+  localStorage.setItem('nexos-nota-id', nota.id)
+  localStorage.setItem(CHAVE_TITULO, titulo.value)
+  localStorage.setItem(CHAVE_CONTEUDO, nota.conteudo || '')
+}
+
+function limparNotaEditor() {
+  notaAtualId.value = `nota-${Date.now()}`
+  notaFavorita.value = false
+  titulo.value = 'Nova nota'
+  localStorage.setItem('nexos-nota-id', notaAtualId.value)
+  localStorage.setItem(CHAVE_TITULO, titulo.value)
+  localStorage.setItem(CHAVE_CONTEUDO, '<p>Comece a escrever aqui...</p>')
+
+  if (editor.value) {
+    editor.value.commands.setContent('<p>Comece a escrever aqui...</p>')
+  }
+}
+
+function abrirNotaEditor(event) {
+  carregarNotaExistente(event?.detail?.id)
+}
+
 onMounted(() => {
   window.visualViewport?.addEventListener('resize', atualizarTeclado)
   window.visualViewport?.addEventListener('scroll', atualizarTeclado)
+  window.addEventListener('nexos-nota-nova', limparNotaEditor)
+  window.addEventListener('nexos-nota-abrir', abrirNotaEditor)
 })
 
 onBeforeUnmount(() => {
   window.visualViewport?.removeEventListener('resize', atualizarTeclado)
   window.visualViewport?.removeEventListener('scroll', atualizarTeclado)
+  window.removeEventListener('nexos-nota-nova', limparNotaEditor)
+  window.removeEventListener('nexos-nota-abrir', abrirNotaEditor)
   editor.value?.destroy()
 })
 
@@ -290,13 +374,26 @@ function alternarNumeracao() {
 
 <template>
   <section class="editor-nota">
-    <input
-      v-model="titulo"
-      class="titulo-nota"
-      type="text"
-      placeholder="Título da nota"
-      aria-label="Título da nota"
-    />
+    <div class="cabecalho-nota">
+      <input
+        v-model="titulo"
+        class="titulo-nota"
+        type="text"
+        placeholder="Título da nota"
+        aria-label="Título da nota"
+      />
+
+      <button
+        type="button"
+        class="botao-favorito"
+        :class="{ ativo: notaFavorita }"
+        @click="alternarFavorito"
+        :aria-pressed="notaFavorita"
+      >
+        <ion-icon :name="notaFavorita ? 'star' : 'star-outline'" aria-hidden="true"></ion-icon>
+        <span>{{ notaFavorita ? 'Favorita' : 'Favoritar' }}</span>
+      </button>
+    </div>
 
     <p class="status-salvamento">
       {{ salvamento }}
@@ -540,15 +637,41 @@ function alternarNumeracao() {
   color: var(--cor-texto, #eeeeee);
 }
 
+.cabecalho-nota {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
 .titulo-nota {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: transparent;
   color: inherit;
   font-size: 36px;
   font-weight: 700;
-  margin: 0 0 8px;
+}
+
+.botao-favorito {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--cor-borda, #383838);
+  background: transparent;
+  color: var(--cor-texto, #f5f5f5);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.botao-favorito.ativo {
+  background: rgb(251 191 36 / 12%);
+  border-color: rgb(251 191 36 / 50%);
+  color: #fbbf24;
 }
 
 .status-salvamento {

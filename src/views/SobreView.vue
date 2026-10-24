@@ -1,10 +1,46 @@
 
+<script setup>
+const integrantes = [
+  {
+    nome: 'Milena',
+    cargo: 'Integrante',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    foto: 'images/milena.jpeg'
+  },
+  {
+    nome: 'Integrante 2',
+    cargo: 'Integrante',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    foto: 'images/victor.jpg'
+  },
+  {
+    nome: 'Integrante 3',
+    cargo: 'Integrante',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    foto: 'images/pedro.jpeg'
+  },
+  {
+    nome: 'Integrante 4',
+    cargo: 'Integrante',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    foto: 'images/anderson.jpeg'
+  },
+  {
+    nome: 'Integrante 5',
+    cargo: 'Integrante',
+    descricao: 'Integrante da equipe responsável pelo desenvolvimento do Nexos.',
+    foto: 'images/Daniel.jpeg'
+  }
+]
+</script>
+
 <template>
   <main class="sobre-container">
 
-    <!-- Apresentação -->
+    <!-- APRESENTAÇÃO -->
+
     <section class="hero">
-<span class="etiqueta">CONHEÇA O NEXOS</span>
+      <span class="etiqueta">CONHEÇA O NEXOS</span>
 
       <h1>Sobre <span>Nós</span></h1>
 
@@ -16,7 +52,8 @@
       </p>
     </section>
 
-    <!-- Quem somos -->
+    <!-- QUEM SOMOS -->
+
     <section class="sobre-conteudo">
       <div class="texto">
         <span class="etiqueta">NOSSA HISTÓRIA</span>
@@ -47,7 +84,8 @@
       </div>
     </section>
 
-    <!-- Missão, visão e valores -->
+    <!-- MISSÃO, VISÃO E VALORES -->
+
     <section class="principios">
       <div class="titulo-secao">
         <span class="etiqueta">O QUE NOS MOVE</span>
@@ -58,7 +96,9 @@
 
         <article class="card">
           <ion-icon name="rocket-outline"></ion-icon>
+
           <h3>Missão</h3>
+
           <p>
             Facilitar a organização de projetos e incentivar
             a colaboração por meio da tecnologia.
@@ -67,7 +107,9 @@
 
         <article class="card">
           <ion-icon name="eye-outline"></ion-icon>
+
           <h3>Visão</h3>
+
           <p>
             Ser uma plataforma que aproxima pessoas,
             promove ideias e simplifica o trabalho em equipe.
@@ -76,7 +118,9 @@
 
         <article class="card">
           <ion-icon name="heart-outline"></ion-icon>
+
           <h3>Valores</h3>
+
           <p>
             Colaboração, criatividade, inovação,
             acessibilidade e respeito às pessoas.
@@ -86,7 +130,8 @@
       </div>
     </section>
 
-    <!-- Funcionalidades -->
+    <!-- FUNCIONALIDADES -->
+
     <section class="funcionalidades">
       <span class="etiqueta">NOSSA PLATAFORMA</span>
 
@@ -98,6 +143,7 @@
       </p>
 
       <div class="recursos">
+
         <div>
           <ion-icon name="folder-open-outline"></ion-icon>
           <span>Gerenciamento de projetos</span>
@@ -117,64 +163,71 @@
           <ion-icon name="star-outline"></ion-icon>
           <span>Organização de favoritos</span>
         </div>
+
       </div>
     </section>
+
+    <!-- INTEGRANTES -->
 
     <section class="integrantes">
       <div class="titulo-secao">
         <span class="etiqueta">NOSSOS INTEGRANTES</span>
+
         <h2>Conheça nossa equipe</h2>
+
+        <p class="subtitulo-equipe">
+          As pessoas por trás do desenvolvimento do Nexos.
+        </p>
       </div>
 
       <div class="grid-integrantes">
-        <article class="membro">
-          <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=80" alt="Integrante 1" />
-          <div class="info">
-            <span class="cargo">Frontend</span>
-            <h3>Daniel</h3>
-            <p>Responsável pela estrutura e pela experiência do usuário.</p>
+
+        <article
+          v-for="(integrante, index) in integrantes"
+          :key="index"
+          class="membro"
+        >
+
+          <!-- FOTO OU ESPAÇO RESERVADO -->
+
+          <div class="foto-integrante">
+
+            <img
+              v-if="integrante.foto"
+              :src="integrante.foto"
+              :alt="`Foto de ${integrante.nome}`"
+            />
+
+            <div
+              v-else
+              class="foto-placeholder"
+            >
+              <ion-icon name="person-outline"></ion-icon>
+
+              <span>Foto em breve</span>
+            </div>
+
           </div>
+
+          <!-- INFORMAÇÕES -->
+
+          <div class="info">
+            <span class="cargo">
+              {{ integrante.cargo }}
+            </span>
+
+            <h3>{{ integrante.nome }}</h3>
+
+            <p>{{ integrante.descricao }}</p>
+          </div>
+
         </article>
 
-        <article class="membro">
-          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80" alt="Integrante 2" />
-          <div class="info">
-            <span class="cargo">Design</span>
-            <h3>Ana</h3>
-            <p>Cuida da identidade visual e da organização da interface.</p>
-          </div>
-        </article>
-
-        <article class="membro">
-          <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=900&q=80" alt="Integrante 3" />
-          <div class="info">
-            <span class="cargo">Desenvolvimento</span>
-            <h3>Lucas</h3>
-            <p>Contribui com a lógica e construção das telas principais.</p>
-          </div>
-        </article>
-
-        <article class="membro">
-          <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80" alt="Integrante 4" />
-          <div class="info">
-            <span class="cargo">Pesquisa</span>
-            <h3>Julia</h3>
-            <p>Ajudou a definir objetivos e melhorar a apresentação do projeto.</p>
-          </div>
-        </article>
-
-        <article class="membro">
-          <img src="https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=900&q=80" alt="Integrante 5" />
-          <div class="info">
-            <span class="cargo">Estratégia</span>
-            <h3>Mateus</h3>
-            <p>Foca na organização do grupo e no desenvolvimento da visão do app.</p>
-          </div>
-        </article>
       </div>
     </section>
 
-    <!-- Final -->
+    <!-- FINAL -->
+
     <section class="final">
       <h2>Grandes ideias começam com conexões.</h2>
 
@@ -185,6 +238,7 @@
 
       <RouterLink to="/" class="botao">
         Voltar ao início
+
         <ion-icon name="arrow-forward-outline"></ion-icon>
       </RouterLink>
     </section>
@@ -389,23 +443,36 @@
   color: var(--cor-texto, #f5f5f5);
 }
 
+/* INTEGRANTES */
+
 .integrantes {
   padding: 80px 24px;
   background: var(--cor-superficie, #1d1d1d);
 }
 
+.subtitulo-equipe {
+  color: var(--cor-texto-suave, #aaa);
+  font-size: 15px;
+  margin-top: 10px;
+  line-height: 1.7;
+}
+
 .grid-integrantes {
   max-width: 1100px;
   margin: 0 auto;
+
   display: grid;
-  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 18px;
 }
 
 .membro {
+  min-width: 0;
+
   background: var(--cor-fundo, #242424);
   border: 1px solid var(--cor-borda, #383838);
   border-radius: 16px;
+
   overflow: hidden;
   transition: 0.2s;
 }
@@ -415,12 +482,58 @@
   border-color: var(--cor-primaria, #a855f7);
 }
 
-.membro img {
+/* FOTOS */
+
+.foto-integrante {
   width: 100%;
   height: 210px;
-  object-fit: cover;
-  display: block;
+
+  overflow: hidden;
+  background: rgba(168, 85, 247, 0.06);
 }
+
+.foto-integrante img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+  object-position: center;
+
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.membro:hover .foto-integrante img {
+  transform: scale(1.05);
+}
+
+/* ESPAÇO PARA FOTOS FUTURAS */
+
+.foto-placeholder {
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  color: var(--cor-texto-suave, #aaa);
+  background: rgba(168, 85, 247, 0.05);
+}
+
+.foto-placeholder ion-icon {
+  font-size: 45px;
+  color: var(--cor-primaria, #a855f7);
+}
+
+.foto-placeholder span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* INFORMAÇÕES DOS INTEGRANTES */
 
 .info {
   padding: 18px 16px 20px;
@@ -428,10 +541,12 @@
 
 .cargo {
   display: inline-block;
+
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;
+
   color: var(--cor-primaria, #c084fc);
   margin-bottom: 8px;
 }
@@ -494,7 +609,7 @@
 
 @media (max-width: 1100px) {
   .grid-integrantes {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -510,7 +625,7 @@
   }
 
   .grid-integrantes {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -538,12 +653,18 @@
   .final {
     padding: 65px 20px;
   }
+
+  .foto-integrante {
+    height: 260px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .card,
+  .membro,
   .recursos div,
-  .botao {
+  .botao,
+  .foto-integrante img {
     transition: none;
   }
 }
