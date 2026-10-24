@@ -24,27 +24,15 @@
 :root[data-theme="claro"] {
   color-scheme: light;
 
-  --cor-fundo: #f8fafc;
+  --cor-fundo: #f9f7ff;
   --cor-superficie: #ffffff;
- --cor-lateral: #0f172a;
+  --cor-lateral: #1f2937;
 
-  --cor-superficie-hover: #f1f5f9;
+  --cor-superficie-hover: #f2ebff;
 
-  --cor-texto: #0f172a;
-  --cor-texto-suave: #64748b;
-  --cor-borda: #e2e8f0;
-
-  --raio: 10px;
-  --largura-max: 1100px;
-  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-
-  --cor-erro: #ef4444;
-  --cor-erro-texto: #fafafa;
-  --cor-sucesso: #16a34a;
-  --cor-sucesso-texto: #fafafa;
-
-  --cor-primaria: #ff5700;
-  --cor-primaria-hover: #e64e00;
+  --cor-texto: #2c2340;
+  --cor-texto-suave: #6f5d8a;
+  --cor-borda: #eadcff;
 
   --raio: 10px;
   --largura-max: 1100px;
@@ -54,6 +42,9 @@
   --cor-erro-texto: #fafafa;
   --cor-sucesso: #16a34a;
   --cor-sucesso-texto: #fafafa;
+
+  --cor-primaria: #8b5cf6;
+  --cor-primaria-hover: #7c3aed;
 }
 
 * {
