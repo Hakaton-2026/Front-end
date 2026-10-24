@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import '@/assets/style-telas/perfil.css'
+import AcessQrCode from '@/components/AcessQrCode.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -51,6 +52,13 @@ async function sair() {
   authStore.logout()
   await router.replace({ name: 'login' })
 }
+
+const QrCodeAberto = ref(false)
+
+function handleQrCode() {
+  QrCodeAberto.value = !QrCodeAberto.value
+}
+
 </script>
 
 <template>
@@ -106,6 +114,13 @@ async function sair() {
           <span class="interruptor-circulo"></span>
         </span>
       </button>
+
+      <button @click="handleQrCode" class="alternar-tema">
+        <ion-icon name="qr-code-outline"></ion-icon>
+        <span>Abrir QR Code</span>
+      </button>
+
+      <AcessQrCode v-if="QrCodeAberto"/>
 
       <button
         type="button"
