@@ -6,7 +6,6 @@ import AppNavbar from '@/components/AppNavbar.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import ToastMessage from './components/ToastMessage.vue';
-</script>
 
 import { sidebarNotasAberta } from '@/composables/useSidebarNotas'
 import { rotasSemLayout } from './router'
@@ -38,6 +37,7 @@ function alternarMenu() {
 function fecharSidebar() {
   sidebarAberta.value = false
 }
+
 </script>
 
 <template>
