@@ -142,8 +142,8 @@ function removerNota(event) {
 
   const lista = [...notas.value].filter((nota) => nota.id !== id)
   notas.value = lista
+
 }
-          <span>Meus documentos</span>
 
 function atualizarListaCompleta(event) {
   const lista = Array.isArray(event?.detail) ? event.detail : []
