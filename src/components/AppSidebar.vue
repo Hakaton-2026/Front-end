@@ -350,6 +350,9 @@ async function sair() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+strong{
+  color:#fff; 
+}
 
 .perfil-dados span,
 .conta-dados span {

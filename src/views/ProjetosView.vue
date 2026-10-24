@@ -55,7 +55,27 @@ async function sair() {
 
 <template>
   <section class="perfil">
+    <div class="usuario-area">
+      <div class="foto">
+        <img
+          v-if="authStore.user?.profile_photo?.url"
+          :src="authStore.user.profile_photo.url"
+          alt="Foto de perfil"
+        />
 
+        <ion-icon
+          v-else
+          name="person-outline"
+        ></ion-icon>
+      </div>
+
+      <div class="dados-usuario">
+        <h2>{{ authStore.user?.name || 'Seu nome' }}</h2>
+        <p>
+          {{ authStore.user?.email || 'Seu e-mail aparecerá aqui' }}
+        </p>
+      </div>
+    </div>
 
     <div class="aparencia">
       <h2>Aparência</h2>

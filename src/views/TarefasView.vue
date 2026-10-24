@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useTarefasStore } from '@/stores/tarefas'
 import { useAuthStore } from '@/stores/auth'
 import projetosApi from '@/api/projetosApi'
@@ -14,11 +14,37 @@ const colunas = [
   { id: 3, titulo: 'Concluído', cor: '#16a34a' },
 ]
 
+// Tipos de filtro disponíveis ao lado da busca.
+const tiposFiltro = [
+  { id: 'todos', rotulo: 'Todos os campos' },
+  { id: 'titulo', rotulo: 'Título' },
+  { id: 'descricao', rotulo: 'Descrição' },
+  { id: 'prioridade', rotulo: 'Prioridade' },
+  { id: 'situacao', rotulo: 'Situação' },
+  { id: 'prazo', rotulo: 'Prazo' },
+]
+
+const opcoesPrioridade = [
+  { id: 1, rotulo: 'Baixa' },
+  { id: 2, rotulo: 'Média' },
+  { id: 3, rotulo: 'Alta' },
+  { id: 4, rotulo: 'Urgente' },
+]
+
+const opcoesPrazo = [
+  { id: 'atrasadas', rotulo: 'Atrasadas' },
+  { id: 'hoje', rotulo: 'Vencem hoje' },
+  { id: 'semana', rotulo: 'Próximos 7 dias' },
+  { id: 'data', rotulo: 'Data específica' },
+]
+
 const projetos = ref([])
 const carregandoProjetos = ref(false)
 const erroProjetos = ref('')
 const abaAtiva = ref('kanban')
+const tipoFiltro = ref('todos')
 const filtro = ref('')
+const filtroData = ref('')
 const filtroProjeto = ref('')
 const modalAberto = ref(false)
 const tarefaEditando = ref(null)
@@ -98,6 +124,261 @@ function mostrarMensagem(texto, tipo = 'sucesso') {
   tipoMensagem.value = tipo
 }
 
+/* ------------------------------------------------------------------
+ * Filtros da listagem (busca + tipo de filtro)
+ * ------------------------------------------------------------------ */
+
+function contem(valor, termo) {
+  return String(valor || '')
+    .toLocaleLowerCase('pt-BR')
+    .includes(termo.toLocaleLowerCase('pt-BR'))
+}
+
+function dataComDias(dias) {
+  const data = new Date()
+  data.setDate(data.getDate() + dias)
+
+  return dataLocal(data)
+}
+
+function prazoDaTarefa(tarefa) {
+  return String(tarefa.prazoFim || tarefa.prazoInicio || '').slice(0, 10)
+}
+
+function correspondePrazo(tarefa, opcao) {
+  const prazo = prazoDaTarefa(tarefa)
+
+  if (!prazo) return false
+
+  const hoje = dataLocal()
+
+  if (opcao === 'atrasadas') {
+    return prazo < hoje && Number(tarefa.situacao) !== 3
+  }
+
+  if (opcao === 'hoje') return prazo === hoje
+
+  if (opcao === 'semana') {
+    return prazo >= hoje && prazo <= dataComDias(7)
+  }
+
+  if (opcao === 'data') {
+    return !filtroData.value || prazo === filtroData.value
+  }
+
+  return true
+}
+
+function correspondeFiltro(tarefa) {
+  const valor = String(filtro.value ?? '').trim()
+
+  if (!valor) return true
+
+  switch (tipoFiltro.value) {
+    case 'titulo':
+      return contem(tarefa.titulo, valor)
+
+    case 'descricao':
+      return contem(tarefa.descricao, valor)
+
+    case 'prioridade':
+      return Number(tarefa.prioridade) === Number(valor)
+
+    case 'situacao':
+      return Number(tarefa.situacao) === Number(valor)
+
+    case 'prazo':
+      return correspondePrazo(tarefa, valor)
+
+    default:
+      return [tarefa.titulo, tarefa.descricao, tarefa.texto].some(
+        (campo) => contem(campo, valor),
+      )
+  }
+}
+
+const filtroEhTexto = computed(() =>
+  ['todos', 'titulo', 'descricao'].includes(tipoFiltro.value),
+)
+
+const placeholderBusca = computed(() => ({
+  todos: 'Buscar tarefas...',
+  titulo: 'Buscar no título...',
+  descricao: 'Buscar na descrição...',
+})[tipoFiltro.value] || 'Buscar tarefas...')
+
+// Ao trocar o tipo de filtro, o valor anterior deixa de fazer sentido.
+watch(tipoFiltro, () => {
+  filtro.value = ''
+  filtroData.value = ''
+})
+
+/* ------------------------------------------------------------------
+ * Alerta de prazo (cor das bordas + notificação)
+ *
+ *  verde    -> tarefa concluída
+ *  amarelo  -> tarefa em andamento
+ *  laranja  -> o tempo está acabando (faltam poucos dias)
+ *  vermelho -> prazo crítico (hoje/amanhã) ou atrasada, com aviso
+ *
+ * Concluída é sempre verde. Para as demais, o prazo (laranja/vermelho)
+ * tem prioridade sobre o amarelo de "em andamento".
+ * ------------------------------------------------------------------ */
+
+// Limites em dias restantes até o prazo final. Ajuste aqui se quiser.
+const DIAS_ALERTA_LARANJA = 3 // faltam até 3 dias
+const DIAS_ALERTA_VERMELHO = 1 // vence hoje ou amanhã (ou já passou)
+
+// "Agora" reativo: atualiza a cada minuto para os alertas mudarem
+// sozinhos com a página aberta (inclusive na virada do dia).
+const agora = ref(Date.now())
+let temporizadorAlerta = null
+
+// Guarda quais tarefas críticas o usuário já dispensou no aviso.
+const alertaDispensado = ref('')
+
+function pluralDias(quantidade) {
+  return `${quantidade} ${quantidade === 1 ? 'dia' : 'dias'}`
+}
+
+const legendaAlerta = [
+  { nivel: 'verde', rotulo: 'Concluída' },
+  { nivel: 'amarelo', rotulo: 'Em andamento' },
+  {
+    nivel: 'laranja',
+    rotulo: `Tempo acabando (até ${pluralDias(DIAS_ALERTA_LARANJA)})`,
+  },
+  {
+    nivel: 'vermelho',
+    rotulo: `Crítica (até ${pluralDias(DIAS_ALERTA_VERMELHO)}) ou atrasada`,
+  },
+]
+
+function diasAteDataIso(dataIso) {
+  const [ano, mes, dia] = String(dataIso).split('-').map(Number)
+
+  if (!ano || !mes || !dia) return null
+
+  const hoje = new Date(agora.value)
+
+  const inicioHoje = new Date(
+    hoje.getFullYear(),
+    hoje.getMonth(),
+    hoje.getDate(),
+  )
+
+  const alvo = new Date(ano, mes - 1, dia)
+
+  return Math.round((alvo - inicioHoje) / 86400000)
+}
+
+function alertaDaTarefa(tarefa) {
+  const situacao = Number(tarefa.situacao)
+
+  if (situacao === 3) {
+    return {
+      nivel: 'verde',
+      rotulo: 'Concluída',
+      icone: 'checkmark-circle-outline',
+    }
+  }
+
+  const dias = diasAteDataIso(prazoDaTarefa(tarefa))
+
+  if (dias !== null) {
+    if (dias < 0) {
+      return {
+        nivel: 'vermelho',
+        rotulo: `Atrasada há ${pluralDias(-dias)}`,
+        icone: 'alert-circle-outline',
+      }
+    }
+
+    if (dias === 0) {
+      return {
+        nivel: 'vermelho',
+        rotulo: 'Vence hoje',
+        icone: 'alert-circle-outline',
+      }
+    }
+
+    if (dias <= DIAS_ALERTA_VERMELHO) {
+      return {
+        nivel: 'vermelho',
+        rotulo: dias === 1 ? 'Vence amanhã' : `Faltam ${pluralDias(dias)}`,
+        icone: 'alert-circle-outline',
+      }
+    }
+
+    if (dias <= DIAS_ALERTA_LARANJA) {
+      return {
+        nivel: 'laranja',
+        rotulo: `Faltam ${pluralDias(dias)}`,
+        icone: 'hourglass-outline',
+      }
+    }
+  }
+
+  if (situacao === 2) {
+    return {
+      nivel: 'amarelo',
+      rotulo: 'Em andamento',
+      icone: 'time-outline',
+    }
+  }
+
+  return { nivel: 'neutro', rotulo: '', icone: '' }
+}
+
+function classeAlerta(tarefa) {
+  const { nivel } = alertaDaTarefa(tarefa)
+
+  return nivel === 'neutro' ? '' : `alerta-${nivel}`
+}
+
+function rotuloAlerta(tarefa) {
+  return alertaDaTarefa(tarefa).rotulo
+}
+
+function iconeAlerta(tarefa) {
+  return alertaDaTarefa(tarefa).icone
+}
+
+// Notificação: tarefas do próprio usuário que estão no vermelho.
+const tarefasCriticasMinhas = computed(() =>
+  store.tarefas
+    .filter(
+      (tarefa) =>
+        Number(tarefa.user) === Number(auth.user?.id) &&
+        alertaDaTarefa(tarefa).nivel === 'vermelho',
+    )
+    .sort((a, b) =>
+      prazoDaTarefa(a).localeCompare(prazoDaTarefa(b)),
+    ),
+)
+
+const chaveAlerta = computed(() =>
+  tarefasCriticasMinhas.value.map((tarefa) => tarefa.id).join(','),
+)
+
+// Reaparece sozinho quando surge uma nova tarefa crítica.
+const mostrarAlerta = computed(() =>
+  tarefasCriticasMinhas.value.length > 0 &&
+  alertaDispensado.value !== chaveAlerta.value,
+)
+
+const tituloAlerta = computed(() => {
+  const total = tarefasCriticasMinhas.value.length
+
+  return total === 1
+    ? 'Atenção: você tem 1 tarefa com o tempo acabando'
+    : `Atenção: você tem ${total} tarefas com o tempo acabando`
+})
+
+function dispensarAlerta() {
+  alertaDispensado.value = chaveAlerta.value
+}
+
 const projetosEditaveis = computed(() =>
   projetos.value.filter((projeto) =>
     ['proprietario', 'editor'].includes(projeto.meu_papel),
@@ -105,17 +386,7 @@ const projetosEditaveis = computed(() =>
 )
 
 const tarefasFiltradas = computed(() => {
-  const termo = filtro.value.trim().toLocaleLowerCase('pt-BR')
-
   return store.tarefas.filter((tarefa) => {
-    const correspondeTexto =
-      !termo ||
-      [tarefa.titulo, tarefa.descricao, tarefa.texto].some((valor) =>
-        String(valor || '')
-          .toLocaleLowerCase('pt-BR')
-          .includes(termo),
-      )
-
     const correspondeProjeto =
       !filtroProjeto.value ||
       (
@@ -124,7 +395,7 @@ const tarefasFiltradas = computed(() => {
           : String(tarefa.projeto || '') === String(filtroProjeto.value)
       )
 
-    return correspondeTexto && correspondeProjeto
+    return correspondeFiltro(tarefa) && correspondeProjeto
   })
 })
 
@@ -886,10 +1157,19 @@ function fecharDetalhes() {
 }
 
 onMounted(async () => {
+  // Reavalia os alertas de prazo a cada minuto.
+  temporizadorAlerta = setInterval(() => {
+    agora.value = Date.now()
+  }, 60000)
+
   await Promise.allSettled([
     carregarProjetos(),
     store.fetchTarefas(),
   ])
+})
+
+onUnmounted(() => {
+  clearInterval(temporizadorAlerta)
 })
 </script>
 
@@ -925,6 +1205,48 @@ onMounted(async () => {
       </article>
     </section>
 
+    <aside
+      v-if="mostrarAlerta"
+      class="deadline-alert"
+      role="alert"
+    >
+      <ion-icon name="alarm-outline" class="deadline-alert-icon" />
+
+      <div class="deadline-alert-body">
+        <strong>{{ tituloAlerta }}</strong>
+
+        <ul>
+          <li
+            v-for="tarefa in tarefasCriticasMinhas.slice(0, 3)"
+            :key="tarefa.id"
+          >
+            <button type="button" @click="abrirDetalhes(tarefa)">
+              {{ tarefa.titulo }}
+            </button>
+
+            <span>{{ rotuloAlerta(tarefa) }}</span>
+          </li>
+        </ul>
+
+        <small
+          v-if="tarefasCriticasMinhas.length > 3"
+          class="deadline-alert-more"
+        >
+          e mais {{ tarefasCriticasMinhas.length - 3 }}
+          {{ tarefasCriticasMinhas.length - 3 === 1 ? 'tarefa' : 'tarefas' }}
+        </small>
+      </div>
+
+      <button
+        type="button"
+        class="deadline-alert-close"
+        aria-label="Dispensar alerta"
+        @click="dispensarAlerta"
+      >
+        ×
+      </button>
+    </aside>
+
     <div class="toolbar">
       <nav class="tabs" aria-label="Visualização de tarefas">
         <button
@@ -942,17 +1264,94 @@ onMounted(async () => {
         </button>
       </nav>
 
-      <input
-        v-model="filtro"
-        type="search"
-        class="search-input"
-        placeholder="Buscar tarefas..."
-        aria-label="Buscar tarefas"
-      />
+      <div class="filter-group">
+        <select
+          v-model="tipoFiltro"
+          class="filter-type"
+          aria-label="Tipo de filtro"
+        >
+          <option
+            v-for="tipo in tiposFiltro"
+            :key="tipo.id"
+            :value="tipo.id"
+          >
+            {{ tipo.rotulo }}
+          </option>
+        </select>
+
+        <input
+          v-if="filtroEhTexto"
+          v-model="filtro"
+          type="search"
+          class="search-input"
+          :placeholder="placeholderBusca"
+          aria-label="Buscar tarefas"
+        />
+
+        <select
+          v-else-if="tipoFiltro === 'prioridade'"
+          v-model="filtro"
+          class="search-input"
+          aria-label="Filtrar por prioridade"
+        >
+          <option value="">Todas as prioridades</option>
+
+          <option
+            v-for="opcao in opcoesPrioridade"
+            :key="opcao.id"
+            :value="String(opcao.id)"
+          >
+            {{ opcao.rotulo }}
+          </option>
+        </select>
+
+        <select
+          v-else-if="tipoFiltro === 'situacao'"
+          v-model="filtro"
+          class="search-input"
+          aria-label="Filtrar por situação"
+        >
+          <option value="">Todas as situações</option>
+
+          <option
+            v-for="coluna in colunas"
+            :key="coluna.id"
+            :value="String(coluna.id)"
+          >
+            {{ coluna.titulo }}
+          </option>
+        </select>
+
+        <template v-else>
+          <select
+            v-model="filtro"
+            class="search-input"
+            aria-label="Filtrar por prazo"
+          >
+            <option value="">Todos os prazos</option>
+
+            <option
+              v-for="opcao in opcoesPrazo"
+              :key="opcao.id"
+              :value="opcao.id"
+            >
+              {{ opcao.rotulo }}
+            </option>
+          </select>
+
+          <input
+            v-if="filtro === 'data'"
+            v-model="filtroData"
+            type="date"
+            class="search-input"
+            aria-label="Data do prazo final"
+          />
+        </template>
+      </div>
 
       <select
         v-model="filtroProjeto"
-        class="search-input"
+        class="search-input project-filter"
         aria-label="Filtrar por projeto"
       >
         <option value="">Todos os projetos</option>
@@ -967,6 +1366,17 @@ onMounted(async () => {
         </option>
       </select>
     </div>
+
+    <ul class="alerta-legenda" aria-label="Legenda das cores de prazo">
+      <li
+        v-for="item in legendaAlerta"
+        :key="item.nivel"
+        :class="`alerta-${item.nivel}`"
+      >
+        <span class="legenda-cor" />
+        {{ item.rotulo }}
+      </li>
+    </ul>
 
     <p
       v-if="mensagem"
@@ -1035,6 +1445,7 @@ onMounted(async () => {
               v-for="tarefa in tarefasDaColuna(coluna.id)"
               :key="tarefa.id"
               class="task-card"
+              :class="classeAlerta(tarefa)"
               :draggable="podeEditarTarefa(tarefa)"
               @dragstart="iniciarArrasteTarefa($event, tarefa)"
               @dragend="finalizarArrasteTarefa"
@@ -1064,6 +1475,14 @@ onMounted(async () => {
               <div class="task-date">
                 <ion-icon name="calendar-outline" />
                 Prazo: {{ formatarData(tarefa.prazoFim) }}
+              </div>
+
+              <div
+                v-if="classeAlerta(tarefa)"
+                class="alerta-badge"
+              >
+                <ion-icon :name="iconeAlerta(tarefa)" />
+                {{ rotuloAlerta(tarefa) }}
               </div>
 
               <div class="checklist-summary">
@@ -1144,8 +1563,17 @@ onMounted(async () => {
           v-for="tarefa in tarefasFiltradas"
           :key="tarefa.id"
           class="list-task"
+          :class="classeAlerta(tarefa)"
         >
           <div class="list-task-main">
+            <span
+              v-if="classeAlerta(tarefa)"
+              class="alerta-badge"
+            >
+              <ion-icon :name="iconeAlerta(tarefa)" />
+              {{ rotuloAlerta(tarefa) }}
+            </span>
+
             <h3>{{ tarefa.titulo }}</h3>
             <p>{{ tarefa.descricao || 'Sem descrição.' }}</p>
 
@@ -1753,11 +2181,28 @@ onMounted(async () => {
   font-size: 1.75rem;
 }
 
+/* Desktop: abas | filtros | projeto, tudo em uma linha. */
 .toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(180px, 260px);
+  grid-template-areas: "tabs filtros projeto";
   align-items: center;
   gap: 12px;
   margin-bottom: 20px;
+}
+
+.toolbar > .tabs {
+  grid-area: tabs;
+}
+
+.toolbar > .filter-group {
+  grid-area: filtros;
+}
+
+.toolbar > .project-filter {
+  grid-area: projeto;
+  width: 100%;
+  max-width: none;
 }
 
 .tabs {
@@ -1792,6 +2237,40 @@ onMounted(async () => {
   border-radius: 9px;
   background: var(--cor-superficie, #222);
   color: var(--cor-texto, #fff);
+}
+
+/* Seletor do tipo de filtro + campo de valor (texto, select ou data) */
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filter-group .search-input {
+  flex: 1 1 0;
+  max-width: none;
+}
+
+.filter-group input[type="date"] {
+  flex: 0 1 160px;
+}
+
+.filter-type {
+  flex: 0 0 170px;
+  width: 170px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 9px;
+  background: var(--cor-superficie, #222);
+  color: var(--cor-texto, #fff);
+  cursor: pointer;
+}
+
+.filter-type:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .notice {
@@ -1905,6 +2384,169 @@ onMounted(async () => {
 
 .task-card:hover {
   border-color: var(--accent-border);
+}
+
+/* Alerta de prazo: a cor da borda indica o nível. */
+.alerta-verde {
+  --alerta-cor: #22c55e;
+}
+
+.alerta-amarelo {
+  --alerta-cor: #eab308;
+}
+
+.alerta-laranja {
+  --alerta-cor: #f97316;
+}
+
+.alerta-vermelho {
+  --alerta-cor: #ef4444;
+}
+
+.task-card.alerta-verde,
+.task-card.alerta-amarelo,
+.task-card.alerta-laranja,
+.task-card.alerta-vermelho,
+.list-task.alerta-verde,
+.list-task.alerta-amarelo,
+.list-task.alerta-laranja,
+.list-task.alerta-vermelho {
+  border-color: var(--alerta-cor);
+  border-left-width: 4px;
+}
+
+/* No vermelho, um brilho discreto reforça o aviso. */
+.task-card.alerta-vermelho,
+.list-task.alerta-vermelho {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--alerta-cor) 35%, transparent),
+    0 0 16px color-mix(in srgb, var(--alerta-cor) 22%, transparent);
+}
+
+.alerta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--alerta-cor) 45%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--alerta-cor) 14%, transparent);
+  color: var(--alerta-cor);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.list-task-main > .alerta-badge {
+  margin: 0 0 8px;
+}
+
+.alerta-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: -6px 0 18px;
+  padding: 0;
+  list-style: none;
+  color: var(--cor-texto-suave, #a3a3a3);
+  font-size: .78rem;
+}
+
+.alerta-legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legenda-cor {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--alerta-cor);
+}
+
+/* Notificação de tarefas com o tempo acabando. */
+.deadline-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 13px 14px;
+  border: 1px solid rgba(239, 68, 68, .55);
+  border-left-width: 4px;
+  border-radius: 11px;
+  background: rgba(239, 68, 68, .1);
+  color: #fecaca;
+}
+
+.deadline-alert-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #f87171;
+  font-size: 1.4rem;
+}
+
+.deadline-alert-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.deadline-alert-body strong {
+  display: block;
+  color: #fca5a5;
+}
+
+.deadline-alert-body ul {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deadline-alert-body li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: .86rem;
+}
+
+.deadline-alert-body li button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.deadline-alert-body li span,
+.deadline-alert-more {
+  color: #fca5a5;
+}
+
+.deadline-alert-more {
+  display: block;
+  margin-top: 6px;
+}
+
+.deadline-alert-close {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(239, 68, 68, .4);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .task-card-meta {
@@ -2389,6 +3031,21 @@ onMounted(async () => {
   overflow-wrap: anywhere;
 }
 
+/* Tablet: abas e projeto na primeira linha, filtros ocupam a linha de baixo. */
+@media (max-width: 1100px) {
+  .toolbar {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "tabs projeto"
+      "filtros filtros";
+  }
+
+  .toolbar > .project-filter {
+    justify-self: end;
+    max-width: 320px;
+  }
+}
+
 @media (max-width: 900px) {
   .kanban-board {
     grid-template-columns: 1fr;
@@ -2396,15 +3053,6 @@ onMounted(async () => {
 
   .kanban-column {
     min-width: 0;
-  }
-
-  .toolbar {
-    flex-wrap: wrap;
-  }
-
-  .search-input {
-    max-width: none;
-    flex: 1 1 180px;
   }
 
   .details-grid {
@@ -2434,13 +3082,47 @@ onMounted(async () => {
     font-size: 1.45rem;
   }
 
+  /* Celular: tudo empilhado em uma coluna, com largura total. */
   .toolbar {
-    align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "tabs"
+      "filtros"
+      "projeto";
+    gap: 10px;
+  }
+
+  .toolbar > .project-filter {
+    justify-self: stretch;
+    max-width: none;
   }
 
   .tabs {
-    align-self: flex-start;
+    width: 100%;
+  }
+
+  .tabs button {
+    flex: 1;
+  }
+
+  /* Em coluna, o flex-basis valeria como altura; por isso zera aqui. */
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group .search-input,
+  .filter-group input[type="date"],
+  .filter-type {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  /* 16px evita o zoom automático dos campos no iOS. */
+  .search-input,
+  .filter-type {
+    font-size: 16px;
   }
 
   .form-row,
