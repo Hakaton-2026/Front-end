@@ -8,16 +8,25 @@ const props = defineProps({
   aberta: {
     type: Boolean,
     default: false
+  },
+  secaoAtiva: {
+    type: String,
+    default: 'editor'
   }
 })
 
-const emit = defineEmits(['fechar'])
+const emit = defineEmits(['fechar', 'selecionar-secao'])
 
 const sidebarClasses = computed(() => ({
   aberta: props.aberta
 }))
 
 function fecharSidebar() {
+  emit('fechar')
+}
+
+function selecionarSecao(secao) {
+  emit('selecionar-secao', secao)
   emit('fechar')
 }
 
@@ -45,7 +54,9 @@ function voltarAoInicio() {
       <nav class="sidebar-notas__menu">
         <button
           type="button"
-          class="sidebar-notas__item ativo"
+          class="sidebar-notas__item"
+          :class="{ ativo: secaoAtiva === 'editor' }"
+          @click="selecionarSecao('editor')"
         >
           <ion-icon name="document-outline"></ion-icon>
           <span>Editor de notas</span>
@@ -54,6 +65,8 @@ function voltarAoInicio() {
         <button
           type="button"
           class="sidebar-notas__item"
+          :class="{ ativo: secaoAtiva === 'documentos' }"
+          @click="selecionarSecao('documentos')"
         >
           <ion-icon name="folder-outline"></ion-icon>
           <span>Meus documentos</span>
@@ -62,6 +75,8 @@ function voltarAoInicio() {
         <button
           type="button"
           class="sidebar-notas__item"
+          :class="{ ativo: secaoAtiva === 'recentes' }"
+          @click="selecionarSecao('recentes')"
         >
           <ion-icon name="time-outline"></ion-icon>
           <span>Notas recentes</span>
@@ -70,6 +85,8 @@ function voltarAoInicio() {
         <button
           type="button"
           class="sidebar-notas__item"
+          :class="{ ativo: secaoAtiva === 'favoritos' }"
+          @click="selecionarSecao('favoritos')"
         >
           <ion-icon name="star-outline"></ion-icon>
           <span>Favoritos</span>

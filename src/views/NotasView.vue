@@ -1,9 +1,61 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useNotasStore } from '@/stores/notas'
 import SidebarNotas from '@/components/notas/SidebarNotas.vue'
-import EditorNota from '@/components//notas/EditorNota.vue'
+import EditorNota from '@/components/notas/EditorNota.vue'
+
+const notasStore = useNotasStore()
 
 const sidebarNotasAberta = ref(false)
+const secaoAtiva = ref('editor')
+const notasRecentes = computed(() =>
+  [...notasStore.notas]
+    .sort((a, b) => (b.atualizadoEm ?? b.updated_at ?? b.id ?? 0)
+      - (a.atualizadoEm ?? a.updated_at ?? a.id ?? 0))
+    .slice(0, 8)
+)
+
+const favoritos = computed(() =>
+  notasStore.notas.filter((nota) => Boolean(nota.favorito))
+)
+
+const documentos = computed(() => notasStore.notas.slice(0, 10))
+
+const listaAtual = computed(() => {
+  switch (secaoAtiva.value) {
+    case 'documentos':
+      return documentos.value
+    case 'recentes':
+      return notasRecentes.value
+    case 'favoritos':
+      return favoritos.value
+    default:
+      return []
+  }
+})
+
+function formatarData(valor) {
+  if (!valor) return 'Hoje'
+
+  return new Date(valor).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  })
+}
+
+function extrairTexto(conteudo) {
+  if (!conteudo) return 'Nenhum conteúdo registrado ainda.'
+
+  const texto = String(conteudo)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!texto) return 'Nenhum conteúdo registrado ainda.'
+
+  return texto.length > 120 ? `${texto.slice(0, 120)}...` : texto
+}
 
 function alternarSidebarNotas() {
   sidebarNotasAberta.value = !sidebarNotasAberta.value
@@ -12,6 +64,58 @@ function alternarSidebarNotas() {
 function fecharSidebarNotas() {
   sidebarNotasAberta.value = false
 }
+
+function selecionarSecao(novaSecao) {
+  secaoAtiva.value = novaSecao
+}
+
+async function abrirNota(notaId) {
+  secaoAtiva.value = 'editor'
+  await nextTick()
+  window.dispatchEvent(
+    new CustomEvent('nexos-nota-abrir', { detail: { id: notaId } })
+  )
+}
+
+async function criarNovaNota() {
+  secaoAtiva.value = 'editor'
+  await nextTick()
+  window.dispatchEvent(new CustomEvent('nexos-nota-nova'))
+}
+
+async function excluirNota(notaId) {
+  await notasStore.deleteNota(notaId)
+}
+
+async function duplicarNota(notaId) {
+  const origem = notasStore.notas.find((nota) => nota.id === notaId)
+
+  if (!origem) return
+
+  await notasStore.addNota({
+    ...origem,
+    titulo: `${origem.titulo || 'Nota'} (cópia)`,
+    id: undefined,
+  })
+}
+
+onMounted(() => {
+  notasStore.fetchNotas().catch((err) => {
+    console.error('Não foi possível carregar as notas:', err)
+  })
+})
+
+
+
+watch(
+  () => notasStore.notas,
+  (novasNotas) => {
+    if (!novasNotas.length && secaoAtiva.value !== 'editor') {
+      secaoAtiva.value = 'editor'
+    }
+  }
+)
+
 </script>
 
 <template>
@@ -19,15 +123,12 @@ function fecharSidebarNotas() {
     class="pagina-notas"
     :class="{ 'sidebar-aberta': sidebarNotasAberta }"
   >
-    <!-- Barra de ações superior unificada -->
     <div class="acoes-topo">
-      <!-- Botão Voltar para o Início -->
       <RouterLink to="/" class="btn-voltar-inicio" title="Voltar para a página inicial">
         <ion-icon name="arrow-back-outline"></ion-icon>
         <span>Início</span>
       </RouterLink>
 
-      <!-- Botão Menu de Notas -->
       <button
         type="button"
         class="botao-sidebar-notas"
@@ -41,15 +142,78 @@ function fecharSidebarNotas() {
       </button>
     </div>
 
-    <!-- Área de layout estrutural (Sidebar + Conteúdo) -->
     <div class="layout-container">
       <SidebarNotas
         :aberta="sidebarNotasAberta"
+        :secao-ativa="secaoAtiva"
         @fechar="fecharSidebarNotas"
+        @selecionar-secao="selecionarSecao"
       />
 
       <section class="conteudo-notas">
-        <EditorNota />
+        <div v-if="secaoAtiva === 'editor'" class="conteudo-editor">
+          <EditorNota />
+        </div>
+
+        <div v-else class="painel-lista-notas">
+          <header class="cabecalho-lista">
+            <div>
+              <p class="usuario-rótulo">
+                {{ secaoAtiva === 'documentos' ? 'Meus documentos' : secaoAtiva === 'recentes' ? 'Notas recentes' : 'Favoritos' }}
+              </p>
+              <h2>
+                {{ secaoAtiva === 'documentos' ? 'Todos os seus documentos' : secaoAtiva === 'recentes' ? 'Últimas atualizações' : 'Notas marcadas como favoritas' }}
+              </h2>
+            </div>
+
+            <div class="acoes-lista">
+              <button type="button" class="botao-abrir-editor" @click="secaoAtiva = 'editor'">
+                Abrir editor
+              </button>
+              <button type="button" class="botao-nova-nota" @click="criarNovaNota">
+                Nova nota
+              </button>
+            </div>
+          </header>
+
+          <div v-if="listaAtual.length" class="lista-notas">
+            <article
+              v-for="nota in listaAtual"
+              :key="nota.id"
+              class="card-nota"
+            >
+              <button type="button" class="card-nota__conteudo" @click="abrirNota(nota.id)">
+                <div class="card-nota__topo">
+                  <span v-if="nota.favorito" class="badge-favorito">Favorito</span>
+                  <span class="card-nota__tempo">{{ formatarData(nota.atualizadoEm) }}</span>
+                </div>
+
+                <h3>{{ nota.titulo || 'Sem título' }}</h3>
+                <p>{{ extrairTexto(nota.texto || nota.conteudo) }}</p>
+              </button>
+
+              <div class="card-nota__acoes">
+                <button type="button" class="acao-nota" @click="duplicarNota(nota.id)">
+                  Duplicar
+                </button>
+                <button type="button" class="acao-nota acao-nota--danger" @click="excluirNota(nota.id)">
+                  Excluir
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <div v-else class="lista-vazia">
+            <ion-icon name="document-outline"></ion-icon>
+            <p>
+              {{ secaoAtiva === 'documentos'
+                ? 'Ainda não há documentos salvos no editor.'
+                : secaoAtiva === 'recentes'
+                  ? 'Ainda não há notas recentes.'
+                  : 'Você ainda não marcou nenhuma nota como favorita.' }}
+            </p>
+          </div>
+        </div>
       </section>
     </div>
   </main>
@@ -63,10 +227,9 @@ function fecharSidebarNotas() {
   min-height: calc(100vh - 70px);
   display: flex;
   flex-direction: column;
-  background: var(--cor-fundo-site); /* Cor de fundo escura padrão */
+  background: var(--cor-fundo-site);
 }
 
-/* Container de botões superiores */
 .acoes-topo {
   display: flex;
   align-items: center;
@@ -75,16 +238,15 @@ function fecharSidebarNotas() {
   border-bottom: 1px solid var(--cor-borda, #383838);
   background: var(--cor-fundo, #171717);
   position: relative;
-  z-index: 101; /* Fica acima do z-index 100 da sidebar no modo desktop */
+  z-index: 101;
 }
 
-/* Novo Botão: Voltar para o Início */
 .btn-voltar-inicio {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 9px 16px;
-  color: var(--cor-destaque, #a855f7); /* Mudado para roxo para combinar */
+  color: var(--cor-destaque, #a855f7);
   background: transparent;
   border: 1px solid var(--cor-destaque, #a855f7);
   border-radius: 9px;
@@ -103,7 +265,6 @@ function fecharSidebarNotas() {
   font-size: 18px;
 }
 
-/* Botão Alternar Sidebar */
 .botao-sidebar-notas {
   display: flex;
   align-items: center;
@@ -121,7 +282,6 @@ function fecharSidebarNotas() {
   font-size: 21px;
 }
 
-/* Container estrutural inferior */
 .layout-container {
   display: flex;
   flex: 1;
@@ -130,7 +290,6 @@ function fecharSidebarNotas() {
   min-width: 0;
 }
 
-/* Conteúdo do Editor e Notas */
 .conteudo-notas {
   flex: 1;
   width: 100%;
@@ -140,48 +299,217 @@ function fecharSidebarNotas() {
   transition: margin-left 0.3s ease, width 0.3s ease;
 }
 
-/* ==========================================================================
-   Regras de Layout para Desktop (Telas acima de 768px)
-   ========================================================================== */
+.conteudo-editor {
+  width: 100%;
+}
+
+.painel-lista-notas {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px 8px;
+}
+
+.cabecalho-lista {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.usuario-rótulo {
+  margin: 0 0 8px;
+  color: #c4b5fd;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.cabecalho-lista h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2vw, 2.1rem);
+}
+
+.acoes-lista {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.botao-abrir-editor,
+.botao-nova-nota {
+  border: 1px solid var(--cor-destaque, #a855f7);
+  background: transparent;
+  color: var(--cor-destaque, #a855f7);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lista-notas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.card-nota {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 180px;
+  text-align: left;
+  padding: 18px;
+  color: var(--cor-texto, #f5f5f5);
+  background: var(--cor-fundo, #171717);
+  border: 1px solid var(--cor-borda, #383838);
+  border-radius: 16px;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+.card-nota:hover {
+  transform: translateY(-2px);
+  border-color: rgb(168 85 247 / 50%);
+}
+
+.card-nota__conteudo {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  padding-top: 4px;
+  text-overflow: ellipsis;
+}
+
+.card-nota__topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  
+}
+
+.badge-favorito {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgb(250 204 21 / 12%);
+  color: #fbbf24;
+  padding: 4px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.card-nota__tempo {
+  color: #9ca3af;
+  font-size: 0.72rem;
+}
+
+.card-nota h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.card-nota p {
+  margin: 0;
+  color: var(--cor-texto-secundario, #a3a3a3);
+  line-height: 1.55;
+}
+
+.card-nota__acoes {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.acao-nota {
+  flex: 1;
+  border: 1px solid var(--cor-borda, #383838);
+  background: transparent;
+  color: var(--cor-texto, #f5f5f5);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.acao-nota--danger {
+  color: #fca5a5;
+  border-color: rgb(248 113 113 / 35%);
+}
+
+.lista-vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  border: 1px dashed var(--cor-borda, #383838);
+  border-radius: 18px;
+  color: var(--cor-texto-secundario, #b2b2b2);
+  background: rgb(255 255 255 / 02%);
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.lista-vazia ion-icon {
+  font-size: 32px;
+  color: var(--cor-destaque, #a855f7);
+}
+
 @media (min-width: 769px) {
-  /* Empurra o conteúdo lateralmente apenas no computador */
   .sidebar-aberta .conteudo-notas {
     margin-left: var(--largura-sidebar-notas);
     width: calc(100% - var(--largura-sidebar-notas));
   }
 }
 
-/* ==========================================================================
-   Adaptações Responsivas - Modo Celular (max-width: 768px)
-   ========================================================================== */
 @media (max-width: 768px) {
   .pagina-notas {
     min-height: calc(100vh - 64px);
   }
 
-  /* Eleva a barra de botões acima do z-index 1200 da gaveta mobile da sidebar */
   .acoes-topo {
     padding: 8px 12px;
     gap: 8px;
-    z-index: 1250; 
+    z-index: 1250;
     position: relative;
   }
 
-  .btn-voltar-inicio, 
+  .btn-voltar-inicio,
   .botao-sidebar-notas {
     padding: 8px 12px;
     font-size: 0.85rem;
   }
 
-  /* Garante que o editor não sofra deslocamento para os lados em telas pequenas */
+  .conteudo-notas {
+    padding: 1rem 0.8rem;
+  }
+
+  .cabecalho-lista {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .sidebar-aberta .conteudo-notas {
     margin-left: 0;
-      width: 100%;
+    width: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .conteudo-notas {
+  .conteudo-notas,
+  .card-nota {
     transition: none;
   }
 }
